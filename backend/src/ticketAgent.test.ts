@@ -23,10 +23,49 @@ describe("runAgentTurn", () => {
       content: [{ type: "text", text: "Have you run a wired speed test?" }],
     });
 
-    const result = await runAgentTurn(history);
+    const result = await runAgentTurn(history, false);
 
-    expect(result).toEqual({ reply: "Have you run a wired speed test?", ticket: null });
+    expect(result).toEqual({
+      reply: "Have you run a wired speed test?",
+      ticket: null,
+      pendingContact: null,
+    });
     expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns pendingContact with a single call when collect_contact_details is called", async () => {
+    mockCreate.mockResolvedValueOnce({
+      content: [
+        {
+          type: "tool_use",
+          id: "toolu_contact",
+          name: "collect_contact_details",
+          input: { name: "Jane Doe", email: "jane@example.com", phone: "07700 900000" },
+        },
+      ],
+    });
+
+    const result = await runAgentTurn(history, false);
+
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      reply: "",
+      ticket: null,
+      pendingContact: { name: "Jane Doe", email: "jane@example.com", phone: "07700 900000" },
+    });
+  });
+
+  it("only offers collect_contact_details before confirmation, and only create_ticket after", async () => {
+    mockCreate.mockResolvedValue({ content: [{ type: "text", text: "ok" }] });
+
+    await runAgentTurn(history, false);
+    const toolsBeforeConfirm = mockCreate.mock.calls[0][0].tools.map((t: { name: string }) => t.name);
+    expect(toolsBeforeConfirm).toEqual(["collect_contact_details"]);
+
+    mockCreate.mockClear();
+    await runAgentTurn(history, true);
+    const toolsAfterConfirm = mockCreate.mock.calls[0][0].tools.map((t: { name: string }) => t.name);
+    expect(toolsAfterConfirm).toEqual(["create_ticket"]);
   });
 
   it("makes a follow-up call and returns the parsed ticket when create_ticket is called", async () => {
@@ -51,7 +90,7 @@ describe("runAgentTurn", () => {
         content: [{ type: "text", text: "Logged a high-priority fault for you." }],
       });
 
-    const result = await runAgentTurn(history);
+    const result = await runAgentTurn(history, true);
 
     expect(mockCreate).toHaveBeenCalledTimes(2);
 
@@ -74,6 +113,7 @@ describe("runAgentTurn", () => {
         raw_message: "my broadband is really slow",
         troubleshooting_notes: "Wired test: 10Mbps vs 100Mbps plan.",
       },
+      pendingContact: null,
     });
   });
 });

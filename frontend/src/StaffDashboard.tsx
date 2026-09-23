@@ -231,9 +231,9 @@ export default function StaffDashboard() {
                 </p>
               )}
 
-              {(detail.ticket.customer_name || detail.ticket.customer_contact) && (
+              {(detail.ticket.customer_name || detail.ticket.customer_email || detail.ticket.customer_phone) && (
                 <p className="detail-contact">
-                  {detail.ticket.customer_name} {detail.ticket.customer_contact}
+                  {detail.ticket.customer_name} — {detail.ticket.customer_email} — {detail.ticket.customer_phone}
                 </p>
               )}
 

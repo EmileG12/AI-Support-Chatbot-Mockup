@@ -23,11 +23,21 @@ Two Vitest suites (frontend, backend), each mocking their external boundary (the
 `api.ts`; the backend's `supabaseClient.ts` and the Anthropic SDK) rather than hitting real
 services. See [docs/tests/README.md](tests/README.md).
 
-## Data flow: logging a ticket
+## Data flow: contact details, then a ticket
 
-1. The chat UI posts each customer message to `POST /api/chat`.
-2. The backend loads the conversation's message history from `messages`, sends it to Claude along with a `create_ticket` tool definition and a system prompt (see [docs/backend-services/ticketAgent.md](backend-services/ticketAgent.md)).
-3. If Claude calls `create_ticket`, the backend runs a duplicate check (trigram similarity against other open tickets in the same category — see [docs/rpc-functions/find_possible_duplicate_ticket.md](rpc-functions/find_possible_duplicate_ticket.md)) before inserting the new row into `tickets`.
+1. The chat UI posts each customer message to `POST /api/chat`. Before any troubleshooting, the
+   system prompt has Claude gather name/email/phone and call `collect_contact_details` — see
+   [docs/backend-services/ticketAgent.md](backend-services/ticketAgent.md). Which tool Claude is
+   even offered is gated on the conversation's `contact_confirmed` flag, not left to prompt
+   compliance alone.
+2. That tool call produces a deterministic (non-LLM) confirmation prompt, shown as a Yes/Edit card
+   in the chat UI (see [docs/components/ContactConfirmCard.md](components/ContactConfirmCard.md)).
+   Confirming or correcting it (`POST .../confirm-contact` / `PATCH .../contact`) settles the
+   conversation's contact fields and makes one real Claude call to continue naturally — see
+   [docs/backend-services/conversationFlow.md](backend-services/conversationFlow.md).
+3. Once contact is confirmed, Claude troubleshoots and, when ready, calls `create_ticket`. The
+   backend runs a duplicate check (trigram similarity against other open tickets in the same
+   category — see [docs/rpc-functions/find_possible_duplicate_ticket.md](rpc-functions/find_possible_duplicate_ticket.md)) before inserting the new row into `tickets`, copying the confirmed contact fields from the conversation.
 4. The ticket (with any duplicate flag) is returned to the chat UI, which shows a confirmation card, and is independently visible/editable in the staff dashboard at `/staff`.
 
 ## Data flow: staff review

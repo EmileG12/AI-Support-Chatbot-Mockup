@@ -1,9 +1,14 @@
 import express from "express";
 import cors from "cors";
-import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import { supabase } from "./supabaseClient.js";
-import { runAgentTurn, TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from "./ticketAgent.js";
-import { findPossibleDuplicateTicket } from "./duplicates.js";
+import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from "./ticketAgent.js";
+import {
+  runAndPersistTurn,
+  insertUserMessage,
+  confirmPendingContact,
+  overwriteContact,
+} from "./conversationFlow.js";
+import type { ContactDetails } from "./contactValidation.js";
 
 export const app = express();
 app.use(cors());
@@ -34,76 +39,41 @@ app.post("/api/chat", async (req, res) => {
       activeConversationId = data.id as string;
     }
 
-    const { error: insertUserMsgError } = await supabase.from("messages").insert({
-      conversation_id: activeConversationId,
-      role: "user",
-      content: message,
-    });
-    if (insertUserMsgError) throw insertUserMsgError;
+    await insertUserMessage(activeConversationId, message);
 
-    const { data: priorMessages, error: historyError } = await supabase
-      .from("messages")
-      .select("role, content")
-      .eq("conversation_id", activeConversationId)
-      .order("created_at", { ascending: true });
-    if (historyError) throw historyError;
-
-    const history: MessageParam[] = (priorMessages ?? []).map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content as string,
-    }));
-
-    const { reply, ticket } = await runAgentTurn(history);
-
-    if (reply) {
-      const { error: insertAssistantMsgError } = await supabase.from("messages").insert({
-        conversation_id: activeConversationId,
-        role: "assistant",
-        content: reply,
-      });
-      if (insertAssistantMsgError) throw insertAssistantMsgError;
-    }
-
-    let createdTicket = null;
-    if (ticket) {
-      const duplicate = await findPossibleDuplicateTicket(
-        ticket.category,
-        `${ticket.raw_message} ${ticket.summary}`
-      );
-
-      const { data: ticketRow, error: ticketError } = await supabase
-        .from("tickets")
-        .insert({
-          conversation_id: activeConversationId,
-          customer_name: ticket.customer_name ?? null,
-          customer_contact: ticket.customer_contact ?? null,
-          category: ticket.category,
-          priority: ticket.priority,
-          summary: ticket.summary,
-          raw_message: ticket.raw_message,
-          troubleshooting_notes: ticket.troubleshooting_notes ?? null,
-          possible_duplicate_of: duplicate?.id ?? null,
-          duplicate_similarity: duplicate?.similarity ?? null,
-        })
-        .select()
-        .single();
-      if (ticketError) throw ticketError;
-      createdTicket = ticketRow;
-
-      await supabase
-        .from("conversations")
-        .update({ status: "resolved" })
-        .eq("id", activeConversationId);
-    }
+    const { reply, ticket, pendingContact } = await runAndPersistTurn(activeConversationId);
 
     res.json({
       conversationId: activeConversationId,
       reply,
-      ticket: createdTicket,
+      ticket,
+      pendingContact,
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Something went wrong handling the chat message" });
+  }
+});
+
+app.post("/api/conversations/:id/confirm-contact", async (req, res) => {
+  try {
+    const result = await confirmPendingContact(req.params.id);
+    if ("error" in result) return res.status(400).json({ error: result.error });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to confirm contact details" });
+  }
+});
+
+app.patch("/api/conversations/:id/contact", async (req, res) => {
+  try {
+    const result = await overwriteContact(req.params.id, req.body as Partial<ContactDetails>);
+    if ("error" in result) return res.status(400).json({ error: result.error });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update contact details" });
   }
 });
 

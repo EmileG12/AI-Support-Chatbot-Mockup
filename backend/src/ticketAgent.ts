@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam, Tool } from "@anthropic-ai/sdk/resources/messages";
+import type { ContactDetails } from "./contactValidation.js";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -26,11 +27,26 @@ export interface CreateTicketArgs {
   category: TicketCategory;
   priority: TicketPriority;
   summary: string;
-  customer_name?: string;
-  customer_contact?: string;
   raw_message: string;
   troubleshooting_notes?: string;
 }
+
+const COLLECT_CONTACT_TOOL: Tool = {
+  name: "collect_contact_details",
+  description:
+    "Record the customer's contact details once you have their name, email address and phone number. " +
+    "Call this exactly once, as soon as you have all three - do not call it again after it succeeds, " +
+    "even if the customer keeps chatting.",
+  input_schema: {
+    type: "object",
+    properties: {
+      name: { type: "string", description: "The customer's full name." },
+      email: { type: "string", description: "The customer's email address." },
+      phone: { type: "string", description: "The customer's phone number." },
+    },
+    required: ["name", "email", "phone"],
+  },
+};
 
 const CREATE_TICKET_TOOL: Tool = {
   name: "create_ticket",
@@ -60,14 +76,6 @@ const CREATE_TICKET_TOOL: Tool = {
         type: "string",
         description: "One or two sentence internal summary of the issue for the support team.",
       },
-      customer_name: {
-        type: "string",
-        description: "Customer's name, if they gave it.",
-      },
-      customer_contact: {
-        type: "string",
-        description: "Customer's email or phone, if they gave it.",
-      },
       raw_message: {
         type: "string",
         description: "The customer's original description of the issue, in their own words.",
@@ -87,15 +95,30 @@ const CREATE_TICKET_TOOL: Tool = {
   },
 };
 
+// Which tool is offered is gated on contact-confirmation status, not just prompt
+// instructions: the history we send Claude only stores plain message text, not the
+// structured tool_use block from a prior turn, so Claude can't reliably tell from
+// re-reading history alone that it already called collect_contact_details. Not
+// offering the tool once contact is confirmed makes it impossible to call again,
+// rather than relying on the model inferring "already done" from a text transcript.
+function toolsFor(contactConfirmed: boolean): Tool[] {
+  return contactConfirmed ? [CREATE_TICKET_TOOL] : [COLLECT_CONTACT_TOOL];
+}
+
 const SYSTEM_PROMPT = `You are the first-line support assistant for Fenmoor Telecom, a UK broadband and mobile provider.
 
-Your job: understand the customer's issue, then log a support ticket for it using the create_ticket tool.
+Your job, in order: first collect the customer's contact details, then understand their issue and log a support ticket for it using the create_ticket tool.
+
+Contact details first:
+- Before discussing any issue in depth, get the customer's full name, email address and phone number - the support team needs these to follow up after the chat ends.
+- If the customer describes their issue before giving contact details, briefly acknowledge it (don't ignore them) but still ask for name, email and phone before going further into troubleshooting.
+- Once you have all three, call collect_contact_details exactly once. A confirmation prompt is then shown to the customer outside of this chat, so you won't see it in the transcript - the next message you see from them will be exactly "Yes, that's correct." (confirming) or a message starting "Actually, here are my correct details - ..." (correcting). Either message means contact details are now fully settled and confirmed - the collect_contact_details tool is deliberately not offered to you anymore at this point, and you should NOT restate or re-ask to confirm the details yourself in your reply (do not write anything like "just to confirm, that's..."). Simply treat contact as done and respond to whatever the customer needs next - continue their issue if they already mentioned one, otherwise ask what you can help with.
+- Do not call create_ticket before contact details have been confirmed.
 
 Rules:
 - Be brief, friendly and professional. This is a text chat, not email - keep replies short.
 - If the issue is already clear from what the customer wrote, don't interrogate them - ask at most one clarifying question, and only if it would materially change the category or priority (e.g. "is this affecting your whole house or just one device?").
-- Do not ask for information you don't need. Name and contact details are a bonus, not a requirement - log the ticket without them if the customer doesn't offer them.
-- Once you have enough information, call create_ticket exactly once. Do not describe the ticket in your reply before calling the tool - call the tool, then confirm briefly afterwards.
+- Once you have enough information about the issue, call create_ticket exactly once. Do not describe the ticket in your reply before calling the tool - call the tool, then confirm briefly afterwards.
 - After the tool result comes back, send one short confirmation message referencing the ticket so the customer knows what happens next. Do not invent an ETA or promise a specific engineer visit time.
 - Never make up account details, order numbers, or account status - you only know what the customer tells you in this conversation.
 
@@ -129,16 +152,20 @@ When the issue looks like a mobile_fault, identify which of these it is and ask 
 export interface AgentTurnResult {
   reply: string;
   ticket: CreateTicketArgs | null;
+  pendingContact: ContactDetails | null;
 }
 
 export async function runAgentTurn(
-  history: MessageParam[]
+  history: MessageParam[],
+  contactConfirmed: boolean
 ): Promise<AgentTurnResult> {
+  const tools = toolsFor(contactConfirmed);
+
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-5",
     max_tokens: 1024,
     system: SYSTEM_PROMPT,
-    tools: [CREATE_TICKET_TOOL],
+    tools,
     messages: history,
   });
 
@@ -152,7 +179,13 @@ export async function runAgentTurn(
   let reply = textBlocks.map((b) => b.text).join("\n").trim();
 
   if (!toolUse) {
-    return { reply, ticket: null };
+    return { reply, ticket: null, pendingContact: null };
+  }
+
+  if (toolUse.name === "collect_contact_details") {
+    // No follow-up call here: the confirmation shown to the customer is a fixed
+    // template built in code from these fields, not something Claude needs to phrase.
+    return { reply: "", ticket: null, pendingContact: toolUse.input as ContactDetails };
   }
 
   const ticket = toolUse.input as CreateTicketArgs;
@@ -178,7 +211,7 @@ export async function runAgentTurn(
     model: "claude-sonnet-4-5",
     max_tokens: 512,
     system: SYSTEM_PROMPT,
-    tools: [CREATE_TICKET_TOOL],
+    tools,
     messages: followUpHistory,
   });
 
@@ -187,5 +220,5 @@ export async function runAgentTurn(
   );
   reply = followUpText.map((b) => b.text).join("\n").trim();
 
-  return { reply, ticket };
+  return { reply, ticket, pendingContact: null };
 }

@@ -234,3 +234,89 @@ body {
 .chat-input-row button:not(:disabled):hover {
   background: var(--brand-dark);
 }
+
+.contact-panel {
+  padding: 0 20px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.contact-confirm-card,
+.contact-form {
+  padding-top: 16px;
+}
+
+.contact-confirm-card dl {
+  margin: 0 0 12px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+}
+
+.contact-confirm-card dt {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.contact-confirm-card dd {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.contact-confirm-actions,
+.contact-form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.contact-confirm-actions button,
+.contact-form-actions button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  background: var(--brand);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.contact-confirm-actions button.secondary,
+.contact-form-actions button.secondary {
+  background: #f0f0f4;
+  color: var(--text);
+}
+
+.contact-confirm-actions button:disabled,
+.contact-form-actions button:disabled {
+  background: #c9c9d4;
+  color: white;
+  cursor: not-allowed;
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.contact-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.contact-form input {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.contact-form input:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: -1px;
+}

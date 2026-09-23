@@ -1,4 +1,4 @@
-import type { ChatResponse, Ticket, TicketDetail } from "./types";
+import type { ChatResponse, ContactActionResponse, ContactDetails, Ticket, TicketDetail } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001";
 
@@ -55,4 +55,31 @@ export async function updateTicket(
   if (!res.ok) throw new Error(`Failed to update ticket: ${res.status}`);
   const data = await res.json();
   return data.ticket;
+}
+
+async function parseOrThrow<T>(res: Response, fallbackMessage: string): Promise<T> {
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? fallbackMessage);
+  }
+  return res.json();
+}
+
+export async function confirmContact(conversationId: string): Promise<ContactActionResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/confirm-contact`, {
+    method: "POST",
+  });
+  return parseOrThrow(res, "Failed to confirm contact details");
+}
+
+export async function submitContact(
+  conversationId: string,
+  details: ContactDetails
+): Promise<ContactActionResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/contact`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(details),
+  });
+  return parseOrThrow(res, "Failed to update contact details");
 }

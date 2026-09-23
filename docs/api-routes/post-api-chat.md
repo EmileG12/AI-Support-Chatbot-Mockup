@@ -1,6 +1,6 @@
 # POST /api/chat
 
-`backend/src/app.ts`
+`backend/src/app.ts`, delegating to [conversationFlow](../backend-services/conversationFlow.md)
 
 ## Request
 
@@ -13,13 +13,11 @@
 ## Behavior
 
 1. Creates a new `conversations` row if `conversationId` wasn't given.
-2. Inserts the user's message into `messages`.
-3. Loads the full message history for the conversation (ascending by `created_at`) and passes it to `runAgentTurn` (see [docs/backend-services/ticketAgent.md](../backend-services/ticketAgent.md)).
-4. If there's a reply, inserts it into `messages` as `role: "assistant"`.
-5. If the agent returned a `ticket`:
-   - Runs `findPossibleDuplicateTicket` (see [docs/backend-services/duplicates.md](../backend-services/duplicates.md)) against `${raw_message} ${summary}`.
-   - Inserts the new row into `tickets`, including `possible_duplicate_of`/`duplicate_similarity` if a match was found.
-   - Sets the conversation's `status` to `resolved`.
+2. Inserts the user's message into `messages` (`conversationFlow.insertUserMessage`).
+3. Calls `conversationFlow.runAndPersistTurn(conversationId)`, which loads history, runs one
+   Claude turn (see [ticketAgent](../backend-services/ticketAgent.md)), and persists whatever it
+   produced — an assistant reply, a new ticket, or (before contact is confirmed) a deterministic
+   contact-confirmation prompt.
 
 ## Response
 
@@ -27,11 +25,17 @@
 {
   conversationId: string;
   reply: string;
-  ticket: Ticket | null; // full row as inserted, or null if no ticket was created this turn
+  ticket: Ticket | null;
+  pendingContact: { name: string; email: string; phone: string } | null;
 }
 ```
 
-`500` with `{ error: string }` on any failure (conversation/message/ticket insert, or the Claude call).
+When `pendingContact` is set, the frontend shows a Yes/Edit confirmation card instead of (or above)
+the normal chat input — see [ContactConfirmCard](../components/ContactConfirmCard.md). Confirming
+or correcting it goes through [POST /confirm-contact](post-confirm-contact.md) or
+[PATCH /contact](patch-conversation-contact.md), not this route.
+
+`500` with `{ error: string }` on any failure.
 
 ## Related
 
