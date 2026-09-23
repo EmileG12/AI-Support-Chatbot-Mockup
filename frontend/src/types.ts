@@ -10,14 +10,22 @@ export type TicketCategory =
 
 export type TicketPriority = "low" | "medium" | "high" | "urgent";
 
+export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
+
 export interface Ticket {
   id: string;
+  conversation_id: string;
   category: TicketCategory;
   priority: TicketPriority;
   summary: string;
-  status: string;
+  status: TicketStatus;
   created_at: string;
+  raw_message: string;
+  customer_name?: string | null;
+  customer_contact?: string | null;
   troubleshooting_notes?: string | null;
+  possible_duplicate_of?: string | null;
+  duplicate_similarity?: number | null;
 }
 
 export interface ChatMessage {
@@ -30,4 +38,10 @@ export interface ChatResponse {
   conversationId: string;
   reply: string;
   ticket: Ticket | null;
+}
+
+export interface TicketDetail {
+  ticket: Ticket;
+  messages: ChatMessage[];
+  duplicateOf: { id: string; summary: string } | null;
 }

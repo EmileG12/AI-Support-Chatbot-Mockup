@@ -1,6 +1,6 @@
 import type { Ticket } from "./types";
 
-const CATEGORY_LABELS: Record<Ticket["category"], string> = {
+export const CATEGORY_LABELS: Record<Ticket["category"], string> = {
   broadband_fault: "Broadband fault",
   mobile_fault: "Mobile fault",
   landline_fault: "Landline fault",
@@ -11,7 +11,7 @@ const CATEGORY_LABELS: Record<Ticket["category"], string> = {
   other: "Other",
 };
 
-const PRIORITY_LABELS: Record<Ticket["priority"], string> = {
+export const PRIORITY_LABELS: Record<Ticket["priority"], string> = {
   low: "Low",
   medium: "Medium",
   high: "High",
@@ -32,6 +32,11 @@ export function TicketCard({ ticket }: { ticket: Ticket }) {
       {ticket.troubleshooting_notes && (
         <p className="ticket-troubleshooting">
           <strong>Diagnostics:</strong> {ticket.troubleshooting_notes}
+        </p>
+      )}
+      {ticket.possible_duplicate_of && (
+        <p className="ticket-duplicate-note">
+          This looks related to something already reported — flagged for our team to review.
         </p>
       )}
     </div>

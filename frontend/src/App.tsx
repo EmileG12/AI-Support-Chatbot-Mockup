@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { sendChatMessage } from "./api";
 import { TicketCard } from "./TicketCard";
 import type { ChatMessage, Ticket } from "./types";
@@ -63,6 +64,9 @@ function App() {
       <header className="app-header">
         <h1>Fenmoor Telecom Support</h1>
         <p>Chat with us and we'll log a ticket for the right team.</p>
+        <Link className="nav-link" to="/staff">
+          Staff view →
+        </Link>
       </header>
 
       <main className="chat-panel">

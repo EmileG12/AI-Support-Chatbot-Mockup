@@ -4,6 +4,14 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --brand: #7c3aed;
+  --brand-dark: #5b21b6;
+  --bg: #f5f5f7;
+  --panel: #ffffff;
+  --border: #e2e2e7;
+  --text: #1a1a1f;
+  --text-muted: #6b6b76;
 }
 
 * {

@@ -16,8 +16,11 @@ export const TICKET_CATEGORIES = [
 
 export const TICKET_PRIORITIES = ["low", "medium", "high", "urgent"] as const;
 
+export const TICKET_STATUSES = ["open", "in_progress", "resolved", "closed"] as const;
+
 export type TicketCategory = (typeof TICKET_CATEGORIES)[number];
 export type TicketPriority = (typeof TICKET_PRIORITIES)[number];
+export type TicketStatus = (typeof TICKET_STATUSES)[number];
 
 export interface CreateTicketArgs {
   category: TicketCategory;

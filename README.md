@@ -58,9 +58,22 @@ Runs on `http://localhost:5173`.
    `complaint`, `other`), a priority (`low`/`medium`/`high`/`urgent`) and a short summary.
 2. When a ticket is created, the backend inserts it into the `tickets` table and the frontend
    shows a confirmation card inline in the chat.
+4. Before inserting, the backend also checks for a likely duplicate: a Postgres function
+   (`find_possible_duplicate_ticket`, using the `pg_trgm` extension) trigram-matches the new
+   ticket's text against other open tickets in the same category from the last 48 hours. A match
+   above the similarity threshold is recorded on the ticket (`possible_duplicate_of`,
+   `duplicate_similarity`) and surfaced to the customer as a soft note, with full detail shown to
+   staff.
+
+## Staff dashboard
+
+`http://localhost:5173/staff` (linked from the chat page) lists tickets with status/category/
+priority filters. Selecting a ticket shows its full chat transcript, troubleshooting notes, and
+(if flagged) a duplicate banner linking to the original ticket with a "close as duplicate" action.
+Category, priority and status can all be overridden here — this is the human-in-the-loop check on
+the AI's classification before a ticket is actioned.
 
 ## Not yet built
 
-- Ticket dashboard / agent-facing view
 - Auth (both ends currently trust all requests — fine for a local mockup, not for production)
 - RLS policies (currently default-deny; all access goes through the backend's service-role key)
