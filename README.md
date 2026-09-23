@@ -73,6 +73,15 @@ priority filters. Selecting a ticket shows its full chat transcript, troubleshoo
 Category, priority and status can all be overridden here — this is the human-in-the-loop check on
 the AI's classification before a ticket is actioned.
 
+## Tests
+
+Each package has its own Vitest suite (see [docs/tests/README.md](docs/tests/README.md)):
+
+```
+cd frontend && npm run test   # React Testing Library, mocks frontend/src/api.ts
+cd backend && npm run test    # supertest against the Express app, mocks Supabase + the Anthropic SDK
+```
+
 ## Not yet built
 
 - Auth (both ends currently trust all requests — fine for a local mockup, not for production)

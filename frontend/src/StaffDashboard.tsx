@@ -82,14 +82,22 @@ export default function StaffDashboard() {
       <div className="dashboard-body">
         <div className="ticket-list-panel">
           <div className="filter-bar">
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as TicketStatus | "all")}>
+            <select
+              aria-label="Filter by status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as TicketStatus | "all")}
+            >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
                   {s === "all" ? "All statuses" : s.replace("_", " ")}
                 </option>
               ))}
             </select>
-            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as TicketCategory | "all")}>
+            <select
+              aria-label="Filter by category"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value as TicketCategory | "all")}
+            >
               <option value="all">All categories</option>
               {CATEGORY_OPTIONS.filter((c) => c !== "all").map((c) => (
                 <option key={c} value={c}>
@@ -97,7 +105,11 @@ export default function StaffDashboard() {
                 </option>
               ))}
             </select>
-            <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value as TicketPriority | "all")}>
+            <select
+              aria-label="Filter by priority"
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value as TicketPriority | "all")}
+            >
               <option value="all">All priorities</option>
               {PRIORITY_OPTIONS.filter((p) => p !== "all").map((p) => (
                 <option key={p} value={p}>

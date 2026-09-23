@@ -14,8 +14,14 @@ React staff UI (/staff)  --GET/PATCH /api/tickets-->        |
   - `/` — the customer-facing chat (`frontend/src/App.tsx`). See [docs/components/App.md](components/App.md).
   - `/staff` — the internal ticket dashboard (`frontend/src/StaffDashboard.tsx`). See [docs/components/StaffDashboard.md](components/StaffDashboard.md).
   - The frontend never holds the Anthropic key or the Supabase service-role key — every data access goes through the backend.
-- **Backend** (`backend/`, Node + Express + TypeScript): the only thing that holds `ANTHROPIC_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY`. See [docs/api-routes/README.md](api-routes/README.md) for its routes and [docs/backend-services/README.md](backend-services/README.md) for its service modules.
+- **Backend** (`backend/`, Node + Express + TypeScript): the only thing that holds `ANTHROPIC_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY`. `backend/src/app.ts` builds and exports the Express app (all routes); `backend/src/server.ts` just imports it and calls `.listen()` — kept separate so tests can import the app without binding a real port. See [docs/api-routes/README.md](api-routes/README.md) for its routes and [docs/backend-services/README.md](backend-services/README.md) for its service modules.
 - **Database**: Supabase (Postgres), run locally via the Supabase CLI (`supabase start`), which manages Docker itself. See [docs/db-schema/README.md](db-schema/README.md).
+
+## Tests
+
+Two Vitest suites (frontend, backend), each mocking their external boundary (the frontend's
+`api.ts`; the backend's `supabaseClient.ts` and the Anthropic SDK) rather than hitting real
+services. See [docs/tests/README.md](tests/README.md).
 
 ## Data flow: logging a ticket
 
