@@ -72,10 +72,12 @@ const CREATE_TICKET_TOOL: Tool = {
       troubleshooting_notes: {
         type: "string",
         description:
-          "For broadband_fault only: what basic diagnostics were already covered in the chat and what they " +
-          "found (e.g. 'wired speed test run, consistently 8Mbps vs 70Mbps plan', 'internet light solid red', " +
-          "'dial tone present, master socket test not yet tried', 'router on floor behind TV unit'). " +
-          "This saves the maintenance team from repeating steps the customer already did. Omit for other categories.",
+          "For broadband_fault, mobile_fault and landline_fault only: what basic diagnostics were already " +
+          "covered in the chat and what they found (e.g. 'wired speed test run, consistently 8Mbps vs 70Mbps " +
+          "plan', 'internet light solid red', 'dial tone present, master socket test not yet tried', 'mesh node " +
+          "in bedroom shows poor backhaul', 'signal drops everywhere, airplane mode toggle did not help', " +
+          "'VOIP audio choppy but broadband otherwise fine'). This saves the maintenance team from repeating " +
+          "steps the customer already did. Omit for other categories.",
       },
     },
     required: ["category", "priority", "summary", "raw_message"],
@@ -104,8 +106,22 @@ When the issue looks like a broadband_fault, work out which of these four it is 
 3. Suspected network/line fault (especially if there's also no landline dial tone): ask them to plug a corded phone into the master socket's test socket (behind the small removable panel) and see if the fault clears. If it clears, the fault is in the home's internal wiring (not Openreach's responsibility); if it persists, it's likely an external network fault. Note which test was done and the result.
 
 4. Weak Wi-Fi / signal doesn't reach parts of the house (but wired speed is fine): ask where the router currently is (e.g. floor level, inside a cabinet, behind the TV) since router placement is usually the cause. Note the router's location and whether wired alternatives (e.g. Powerline adapters) have been considered.
+   - If the customer mentions a mesh Wi-Fi system (multiple pods/satellites, e.g. Google Nest, TP-Link Deco, eero): ask instead whether the affected area is far from every mesh node or genuinely between them, and whether the mesh app shows all nodes online with a good backhaul connection to the main router. A node showing as offline or "poor" backhaul is a much more specific fault than general placement. Note node count, which node(s) are affected, and backhaul status (wired or wireless) if known.
 
-Use judgement: if the customer already describes symptoms that clearly point to one of these (e.g. "router light is red"), don't ask again - just log what they said in troubleshooting_notes. If it's a landline_fault rather than broadband, use playbook item 3 (dial tone / master socket test) instead.`;
+5. VOIP / digital landline (a landline_fault where the customer has a digital voice line rather than a traditional phone line - increasingly common since Openreach is retiring analogue lines): ask whether the call problem (no dial tone, choppy/robotic audio, dropped calls) happens only when the broadband is also having issues, or happens even when the internet otherwise seems fine. If it correlates with broadband problems, treat it as the underlying broadband_fault instead. If broadband is fine but calls are still bad, ask if other devices are heavily using the connection at the same time (uploads/video calls can cause jitter on VOIP). Note the correlation with broadband status and any competing traffic.
+
+Use judgement: if the customer already describes symptoms that clearly point to one of these (e.g. "router light is red"), don't ask again - just log what they said in troubleshooting_notes. If it's a landline_fault and not clearly VOIP, use playbook item 3 (dial tone / master socket test) instead.
+
+Mobile troubleshooting playbook:
+When the issue looks like a mobile_fault, identify which of these it is and ask ONE targeted question, same rules as above (skip if already answered, log the result in troubleshooting_notes):
+
+1. No signal or signal keeps dropping: ask whether this happens in one specific location or everywhere they go, and whether toggling Airplane Mode on and off for a few seconds changes anything. Signal that's bad everywhere and doesn't recover suggests a device/SIM/account issue rather than local coverage; signal that's only bad in one place is more likely a coverage/mast issue for that area.
+
+2. Signal is fine but no mobile data (web/apps don't load): ask if this is happening on Wi-Fi-off, mobile data only, and whether it's every app or specific ones. Ask if they've recently travelled abroad (data roaming may need enabling). Note whether data works with Wi-Fi disabled, and any recent travel.
+
+3. Can't make or receive calls/texts but data works fine: ask whether it's outgoing calls, incoming calls, or both, and whether Wi-Fi Calling is available/enabled on the phone (useful if indoor signal is weak). Note which direction fails and Wi-Fi Calling status.
+
+4. No service at all / "SIM not detected": ask them to power the phone off and back on, and if possible try the SIM in another unlocked phone to check if the fault follows the SIM or stays with the handset. Note the result of that swap test if done.`;
 
 export interface AgentTurnResult {
   reply: string;
