@@ -183,6 +183,28 @@
   font-size: 0.8rem;
 }
 
+.duplicate-compare {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.duplicate-compare-column {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.duplicate-compare-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
 .edit-row {
   display: flex;
   gap: 12px;

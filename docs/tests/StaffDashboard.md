@@ -16,8 +16,10 @@ Tests [StaffDashboard](../components/StaffDashboard.md). Mocks the `frontend/src
 - When the selected ticket has a `duplicateOf`, the duplicate banner renders with the linked
   ticket's summary and similarity percentage, and its "Close as duplicate" button calls
   `updateTicket(id, { status: "closed" })`.
-- "View duplicate" calls `fetchTicketDetail` with the *linked* ticket's id, loading it into the
-  same detail panel.
+- "View duplicate" calls `fetchTicketDetail` with the *linked* ticket's id and renders it as a
+  second compact ticket card alongside the current one, without changing the main selection or
+  transcript (asserted by checking the original ticket's transcript message is still on screen);
+  clicking the now-"Hide duplicate" button again removes the comparison card.
 - "Not a duplicate" calls `updateTicket(id, { duplicate_dismissed: true })`, and the banner
   disappears once the (mocked) update resolves.
 

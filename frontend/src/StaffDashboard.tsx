@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { fetchTickets, fetchTicketDetail, updateTicket } from "./api";
-import { CATEGORY_LABELS, PRIORITY_LABELS } from "./TicketCard";
+import { CATEGORY_LABELS, PRIORITY_LABELS, TicketCard } from "./TicketCard";
 import type { Ticket, TicketCategory, TicketPriority, TicketStatus, TicketDetail } from "./types";
 import "./StaffDashboard.css";
 
@@ -22,6 +22,8 @@ export default function StaffDashboard() {
   const [detail, setDetail] = useState<TicketDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duplicateTicket, setDuplicateTicket] = useState<Ticket | null>(null);
+  const [isDuplicateLoading, setIsDuplicateLoading] = useState(false);
 
   const loadTickets = useCallback(async () => {
     setIsLoading(true);
@@ -46,6 +48,7 @@ export default function StaffDashboard() {
   }, [loadTickets]);
 
   useEffect(() => {
+    setDuplicateTicket(null);
     if (!selectedId) {
       setDetail(null);
       return;
@@ -57,6 +60,23 @@ export default function StaffDashboard() {
         setError("Failed to load ticket detail.");
       });
   }, [selectedId]);
+
+  async function handleViewDuplicate(duplicateId: string) {
+    if (duplicateTicket) {
+      setDuplicateTicket(null);
+      return;
+    }
+    setIsDuplicateLoading(true);
+    try {
+      const dupDetail = await fetchTicketDetail(duplicateId);
+      setDuplicateTicket(dupDetail.ticket);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load the duplicate ticket.");
+    } finally {
+      setIsDuplicateLoading(false);
+    }
+  }
 
   async function handleUpdate(
     updates: Partial<Pick<Ticket, "category" | "priority" | "status" | "duplicate_dismissed">>
@@ -186,7 +206,12 @@ export default function StaffDashboard() {
                       ` (${Math.round(detail.ticket.duplicate_similarity * 100)}% similar)`}
                   </p>
                   <div className="duplicate-banner-actions">
-                    <button onClick={() => setSelectedId(detail.duplicateOf!.id)}>View duplicate</button>
+                    <button
+                      onClick={() => handleViewDuplicate(detail.duplicateOf!.id)}
+                      disabled={isDuplicateLoading}
+                    >
+                      {duplicateTicket ? "Hide duplicate" : isDuplicateLoading ? "Loading…" : "View duplicate"}
+                    </button>
                     <button onClick={() => handleUpdate({ status: "closed" })}>Close as duplicate</button>
                     <button
                       className="secondary"
@@ -194,6 +219,19 @@ export default function StaffDashboard() {
                     >
                       Not a duplicate
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {duplicateTicket && (
+                <div className="duplicate-compare">
+                  <div className="duplicate-compare-column">
+                    <span className="duplicate-compare-label">This ticket</span>
+                    <TicketCard ticket={detail.ticket} />
+                  </div>
+                  <div className="duplicate-compare-column">
+                    <span className="duplicate-compare-label">Possible duplicate</span>
+                    <TicketCard ticket={duplicateTicket} />
                   </div>
                 </div>
               )}

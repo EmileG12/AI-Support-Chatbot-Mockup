@@ -136,18 +136,18 @@ describe("StaffDashboard", () => {
     expect(mockUpdateTicket).toHaveBeenCalledWith("t1", { status: "closed" });
   });
 
-  it("'View duplicate' loads the linked ticket into the detail panel", async () => {
+  it("'View duplicate' shows the linked ticket alongside the current one, without navigating away", async () => {
     mockFetchTickets.mockResolvedValueOnce([makeTicket({ id: "t1", possible_duplicate_of: "t0" })]);
     mockFetchTicketDetail.mockResolvedValueOnce(
       makeDetail({
         ticket: makeTicket({ id: "t1", possible_duplicate_of: "t0", duplicate_similarity: 0.6 }),
         duplicateOf: { id: "t0", summary: "Original outage report" },
+        messages: [{ id: "m1", role: "user", content: "my broadband is down" }],
       })
     );
     mockFetchTicketDetail.mockResolvedValueOnce(
       makeDetail({
-        ticket: makeTicket({ id: "t0", summary: "Original outage report" }),
-        messages: [{ id: "m0", role: "user", content: "original message" }],
+        ticket: makeTicket({ id: "99999999-8888-7777-6666-555555555555", summary: "Original outage report" }),
       })
     );
     const user = userEvent.setup();
@@ -155,12 +155,20 @@ describe("StaffDashboard", () => {
 
     const row = await findTableRow("Broadband fault");
     await user.click(row);
+    await screen.findByText("my broadband is down");
 
     const banner = await screen.findByText(/Possibly a duplicate of ticket/);
     await user.click(within(banner.closest(".duplicate-banner")!).getByRole("button", { name: /view duplicate/i }));
 
     expect(mockFetchTicketDetail).toHaveBeenLastCalledWith("t0");
-    expect(await screen.findByText("original message")).toBeInTheDocument();
+    // The duplicate's own compact card renders alongside the current ticket...
+    expect(await screen.findByText("Ticket #99999999")).toBeInTheDocument();
+    // ...and the current ticket's transcript is still showing - no navigation happened.
+    expect(screen.getByText("my broadband is down")).toBeInTheDocument();
+
+    // Toggling again hides it.
+    await user.click(screen.getByRole("button", { name: /hide duplicate/i }));
+    expect(screen.queryByText("Ticket #99999999")).not.toBeInTheDocument();
   });
 
   it("'Not a duplicate' dismisses the warning and the banner disappears", async () => {
