@@ -6,6 +6,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 export const TICKET_CATEGORIES = [
   "broadband_fault",
   "mobile_fault",
+  "landline_fault",
   "billing",
   "provisioning",
   "account",
@@ -39,7 +40,8 @@ const CREATE_TICKET_TOOL: Tool = {
         type: "string",
         enum: TICKET_CATEGORIES as unknown as string[],
         description:
-          "broadband_fault: line down/slow/dropping. mobile_fault: SIM/signal/mobile data issues. " +
+          "broadband_fault: internet down/slow/dropping. mobile_fault: SIM/signal/mobile data issues. " +
+          "landline_fault: home phone/landline - no dial tone, calls not connecting, line noise. " +
           "billing: invoices, payments, charges. provisioning: new orders, installs, switching provider. " +
           "account: details/password/plan changes. complaint: dissatisfaction with service received. other: anything else.",
       },

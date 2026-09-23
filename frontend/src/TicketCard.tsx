@@ -3,6 +3,7 @@ import type { Ticket } from "./types";
 const CATEGORY_LABELS: Record<Ticket["category"], string> = {
   broadband_fault: "Broadband fault",
   mobile_fault: "Mobile fault",
+  landline_fault: "Landline fault",
   billing: "Billing",
   provisioning: "Provisioning",
   account: "Account",

@@ -1,6 +1,7 @@
 export type TicketCategory =
   | "broadband_fault"
   | "mobile_fault"
+  | "landline_fault"
   | "billing"
   | "provisioning"
   | "account"

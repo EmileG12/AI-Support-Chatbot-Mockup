@@ -54,8 +54,8 @@ Runs on `http://localhost:5173`.
    (`claude-sonnet-4-5`) along with a `create_ticket` tool definition and a system prompt
    describing the Fenmoor Telecom support agent persona.
 3. Claude either asks a clarifying question or calls `create_ticket` with a category
-   (`broadband_fault`, `mobile_fault`, `billing`, `provisioning`, `account`, `complaint`,
-   `other`), a priority (`low`/`medium`/`high`/`urgent`) and a short summary.
+   (`broadband_fault`, `mobile_fault`, `landline_fault`, `billing`, `provisioning`, `account`,
+   `complaint`, `other`), a priority (`low`/`medium`/`high`/`urgent`) and a short summary.
 2. When a ticket is created, the backend inserts it into the `tickets` table and the frontend
    shows a confirmation card inline in the chat.
 
