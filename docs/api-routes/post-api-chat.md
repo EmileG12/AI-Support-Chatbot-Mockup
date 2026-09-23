@@ -1,6 +1,6 @@
 # POST /api/chat
 
-`backend/src/server.ts`
+`backend/src/app.ts`
 
 ## Request
 

@@ -1,6 +1,6 @@
 # PATCH /api/tickets/:id
 
-`backend/src/server.ts`
+`backend/src/app.ts`
 
 ## Request
 

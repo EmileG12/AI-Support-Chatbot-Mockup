@@ -1,6 +1,6 @@
 # API routes
 
-All in `backend/src/server.ts`. No authentication (see [docs/architecture.md](../architecture.md#known-gaps)).
+All in `backend/src/app.ts`. No authentication (see [docs/architecture.md](../architecture.md#known-gaps)).
 
 | Route | Purpose |
 |---|---|

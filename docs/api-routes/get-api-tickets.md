@@ -1,6 +1,6 @@
 # GET /api/tickets
 
-`backend/src/server.ts`
+`backend/src/app.ts`
 
 ## Query params
 
