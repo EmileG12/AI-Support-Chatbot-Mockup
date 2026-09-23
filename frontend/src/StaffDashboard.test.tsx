@@ -59,7 +59,9 @@ describe("StaffDashboard", () => {
         priority: undefined,
       })
     );
-    expect(await within(screen.getByRole("table")).findByText("Broadband fault")).toBeInTheDocument();
+    const table = screen.getByRole("table");
+    expect(await within(table).findByText("Broadband fault")).toBeInTheDocument();
+    expect(within(table).getByText("#11111111")).toBeInTheDocument();
   });
 
   it("re-fetches with the new filter when a filter changes", async () => {
@@ -132,5 +134,56 @@ describe("StaffDashboard", () => {
     await user.click(within(banner.closest(".duplicate-banner")!).getByRole("button", { name: /close as duplicate/i }));
 
     expect(mockUpdateTicket).toHaveBeenCalledWith("t1", { status: "closed" });
+  });
+
+  it("'View duplicate' loads the linked ticket into the detail panel", async () => {
+    mockFetchTickets.mockResolvedValueOnce([makeTicket({ id: "t1", possible_duplicate_of: "t0" })]);
+    mockFetchTicketDetail.mockResolvedValueOnce(
+      makeDetail({
+        ticket: makeTicket({ id: "t1", possible_duplicate_of: "t0", duplicate_similarity: 0.6 }),
+        duplicateOf: { id: "t0", summary: "Original outage report" },
+      })
+    );
+    mockFetchTicketDetail.mockResolvedValueOnce(
+      makeDetail({
+        ticket: makeTicket({ id: "t0", summary: "Original outage report" }),
+        messages: [{ id: "m0", role: "user", content: "original message" }],
+      })
+    );
+    const user = userEvent.setup();
+    renderDashboard();
+
+    const row = await findTableRow("Broadband fault");
+    await user.click(row);
+
+    const banner = await screen.findByText(/Possibly a duplicate of ticket/);
+    await user.click(within(banner.closest(".duplicate-banner")!).getByRole("button", { name: /view duplicate/i }));
+
+    expect(mockFetchTicketDetail).toHaveBeenLastCalledWith("t0");
+    expect(await screen.findByText("original message")).toBeInTheDocument();
+  });
+
+  it("'Not a duplicate' dismisses the warning and the banner disappears", async () => {
+    mockFetchTickets.mockResolvedValueOnce([makeTicket({ id: "t1", possible_duplicate_of: "t0" })]);
+    mockFetchTicketDetail.mockResolvedValueOnce(
+      makeDetail({
+        ticket: makeTicket({ id: "t1", possible_duplicate_of: "t0", duplicate_similarity: 0.6 }),
+        duplicateOf: { id: "t0", summary: "Original outage report" },
+      })
+    );
+    mockUpdateTicket.mockResolvedValueOnce(
+      makeTicket({ id: "t1", possible_duplicate_of: "t0", duplicate_dismissed: true })
+    );
+    const user = userEvent.setup();
+    renderDashboard();
+
+    const row = await findTableRow("Broadband fault");
+    await user.click(row);
+
+    const banner = await screen.findByText(/Possibly a duplicate of ticket/);
+    await user.click(within(banner.closest(".duplicate-banner")!).getByRole("button", { name: /not a duplicate/i }));
+
+    expect(mockUpdateTicket).toHaveBeenCalledWith("t1", { duplicate_dismissed: true });
+    await waitFor(() => expect(screen.queryByText(/Possibly a duplicate of ticket/)).not.toBeInTheDocument());
   });
 });

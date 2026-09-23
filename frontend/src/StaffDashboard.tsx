@@ -58,7 +58,9 @@ export default function StaffDashboard() {
       });
   }, [selectedId]);
 
-  async function handleUpdate(updates: Partial<Pick<Ticket, "category" | "priority" | "status">>) {
+  async function handleUpdate(
+    updates: Partial<Pick<Ticket, "category" | "priority" | "status" | "duplicate_dismissed">>
+  ) {
     if (!selectedId) return;
     try {
       const updated = await updateTicket(selectedId, updates);
@@ -125,6 +127,7 @@ export default function StaffDashboard() {
           <table className="ticket-table">
             <thead>
               <tr>
+                <th>ID</th>
                 <th>Category</th>
                 <th>Priority</th>
                 <th>Status</th>
@@ -139,6 +142,7 @@ export default function StaffDashboard() {
                   className={t.id === selectedId ? "selected" : ""}
                   onClick={() => setSelectedId(t.id)}
                 >
+                  <td className="ticket-id-cell">#{t.id.slice(0, 8)}</td>
                   <td>{CATEGORY_LABELS[t.category]}</td>
                   <td>
                     <span className={`priority-badge priority-${t.priority}`}>
@@ -149,12 +153,16 @@ export default function StaffDashboard() {
                     <StatusBadge status={t.status} />
                   </td>
                   <td>{new Date(t.created_at).toLocaleString()}</td>
-                  <td>{t.possible_duplicate_of && <span title="Possible duplicate">⚠</span>}</td>
+                  <td>
+                    {t.possible_duplicate_of && !t.duplicate_dismissed && (
+                      <span title="Possible duplicate">⚠</span>
+                    )}
+                  </td>
                 </tr>
               ))}
               {!isLoading && tickets.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="empty-row">
+                  <td colSpan={6} className="empty-row">
                     No tickets match these filters.
                   </td>
                 </tr>
@@ -169,7 +177,7 @@ export default function StaffDashboard() {
             <>
               <h2>Ticket #{detail.ticket.id.slice(0, 8)}</h2>
 
-              {detail.duplicateOf && (
+              {detail.duplicateOf && !detail.ticket.duplicate_dismissed && (
                 <div className="duplicate-banner">
                   <p>
                     Possibly a duplicate of ticket #{detail.duplicateOf.id.slice(0, 8)} — "
@@ -177,7 +185,16 @@ export default function StaffDashboard() {
                     {typeof detail.ticket.duplicate_similarity === "number" &&
                       ` (${Math.round(detail.ticket.duplicate_similarity * 100)}% similar)`}
                   </p>
-                  <button onClick={() => handleUpdate({ status: "closed" })}>Close as duplicate</button>
+                  <div className="duplicate-banner-actions">
+                    <button onClick={() => setSelectedId(detail.duplicateOf!.id)}>View duplicate</button>
+                    <button onClick={() => handleUpdate({ status: "closed" })}>Close as duplicate</button>
+                    <button
+                      className="secondary"
+                      onClick={() => handleUpdate({ duplicate_dismissed: true })}
+                    >
+                      Not a duplicate
+                    </button>
+                  </div>
                 </div>
               )}
 

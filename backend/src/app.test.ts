@@ -102,6 +102,22 @@ describe("PATCH /api/tickets/:id", () => {
     expect(res.status).toBe(200);
     expect(res.body.ticket).toEqual({ id: "t1", priority: "urgent" });
   });
+
+  it("rejects a non-boolean duplicate_dismissed", async () => {
+    const res = await request(app).patch("/api/tickets/t1").send({ duplicate_dismissed: "yes" });
+
+    expect(res.status).toBe(400);
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it("accepts duplicate_dismissed", async () => {
+    queueResult({ data: { id: "t1", duplicate_dismissed: true }, error: null });
+
+    const res = await request(app).patch("/api/tickets/t1").send({ duplicate_dismissed: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ticket).toEqual({ id: "t1", duplicate_dismissed: true });
+  });
 });
 
 describe("POST /api/chat", () => {

@@ -155,6 +155,12 @@
   color: #92400e;
 }
 
+.duplicate-banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .duplicate-banner button {
   border: none;
   background: #92400e;
@@ -163,6 +169,18 @@
   border-radius: 8px;
   font-size: 0.8rem;
   cursor: pointer;
+}
+
+.duplicate-banner button.secondary {
+  background: transparent;
+  color: #92400e;
+  border: 1px solid #92400e;
+}
+
+.ticket-id-cell {
+  font-family: monospace;
+  color: var(--text-muted);
+  font-size: 0.8rem;
 }
 
 .edit-row {

@@ -134,11 +134,12 @@ interface UpdateTicketBody {
   category?: string;
   priority?: string;
   status?: string;
+  duplicate_dismissed?: boolean;
 }
 
 app.patch("/api/tickets/:id", async (req, res) => {
-  const { category, priority, status } = req.body as UpdateTicketBody;
-  const updates: Record<string, string> = {};
+  const { category, priority, status, duplicate_dismissed } = req.body as UpdateTicketBody;
+  const updates: Record<string, string | boolean> = {};
 
   if (category !== undefined) {
     if (!TICKET_CATEGORIES.includes(category as (typeof TICKET_CATEGORIES)[number])) {
@@ -157,6 +158,12 @@ app.patch("/api/tickets/:id", async (req, res) => {
       return res.status(400).json({ error: `Invalid status: ${status}` });
     }
     updates.status = status;
+  }
+  if (duplicate_dismissed !== undefined) {
+    if (typeof duplicate_dismissed !== "boolean") {
+      return res.status(400).json({ error: "duplicate_dismissed must be a boolean" });
+    }
+    updates.duplicate_dismissed = duplicate_dismissed;
   }
 
   if (Object.keys(updates).length === 0) {

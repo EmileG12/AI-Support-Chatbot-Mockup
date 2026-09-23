@@ -5,10 +5,10 @@
 ## Request
 
 ```ts
-{ category?: string; priority?: string; status?: string }
+{ category?: string; priority?: string; status?: string; duplicate_dismissed?: boolean }
 ```
 
-Any subset of the three fields. Each provided value is validated against `TICKET_CATEGORIES`/`TICKET_PRIORITIES`/`TICKET_STATUSES` (from [ticketAgent](../backend-services/ticketAgent.md)) — `400` with `{ error: "Invalid <field>: <value>" }` if not. `400` with `{ error: "No valid fields to update" }` if the body is empty.
+Any subset of the four fields. `category`/`priority`/`status` are validated against `TICKET_CATEGORIES`/`TICKET_PRIORITIES`/`TICKET_STATUSES` (from [ticketAgent](../backend-services/ticketAgent.md)) — `400` with `{ error: "Invalid <field>: <value>" }` if not. `duplicate_dismissed` is validated as an actual boolean — `400` with `{ error: "duplicate_dismissed must be a boolean" }` if not. `400` with `{ error: "No valid fields to update" }` if the body is empty.
 
 ## Behavior
 

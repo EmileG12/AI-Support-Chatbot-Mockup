@@ -17,8 +17,9 @@ them).
   query chain, and skips filtering entirely when a param is `"all"`.
 - `GET /api/tickets/:id` returns 404 when the ticket isn't found, and includes `duplicateOf` in the
   response when the ticket's `possible_duplicate_of` is set.
-- `PATCH /api/tickets/:id` returns 400 for an invalid category and for an empty body (no
-  Supabase call made in either case), and 200 with the updated row on valid input.
+- `PATCH /api/tickets/:id` returns 400 for an invalid category, an empty body, and a non-boolean
+  `duplicate_dismissed` (no Supabase call made in any of these), and 200 with the updated row on
+  valid input (including `duplicate_dismissed: true`).
 - `POST /api/chat` creates a new `conversations` row when no `conversationId` is given, and returns
   `{ reply, ticket: null, pendingContact: null }` when the (mocked) agent doesn't call a tool.
 - `POST /api/chat` inserts the new ticket with `possible_duplicate_of`/`duplicate_similarity` set

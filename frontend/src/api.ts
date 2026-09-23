@@ -45,7 +45,7 @@ export async function fetchTicketDetail(id: string): Promise<TicketDetail> {
 
 export async function updateTicket(
   id: string,
-  updates: Partial<Pick<Ticket, "category" | "priority" | "status">>
+  updates: Partial<Pick<Ticket, "category" | "priority" | "status" | "duplicate_dismissed">>
 ): Promise<Ticket> {
   const res = await fetch(`${API_BASE_URL}/api/tickets/${id}`, {
     method: "PATCH",

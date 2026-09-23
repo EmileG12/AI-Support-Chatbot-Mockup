@@ -33,6 +33,7 @@ export interface Ticket {
   troubleshooting_notes?: string | null;
   possible_duplicate_of?: string | null;
   duplicate_similarity?: number | null;
+  duplicate_dismissed?: boolean;
 }
 
 export interface ChatMessage {

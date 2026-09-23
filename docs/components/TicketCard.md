@@ -16,7 +16,7 @@ Renders a single ticket's category, priority, summary, and (when present) troubl
 
 - Priority badge and left border color vary by `ticket.priority` (green→amber→orange→red for low→urgent).
 - Shows a "Diagnostics" line when `ticket.troubleshooting_notes` is set.
-- Shows a non-identifying "this looks related to something already reported" note when `ticket.possible_duplicate_of` is set — the matched ticket's id/summary are staff-only (shown in [StaffDashboard](StaffDashboard.md) instead) and not exposed here.
+- Shows a non-identifying "this looks related to something already reported" note when `ticket.possible_duplicate_of` is set and `ticket.duplicate_dismissed` is not true — the matched ticket's id/summary are staff-only (shown in [StaffDashboard](StaffDashboard.md) instead) and not exposed here. In practice a ticket is always undismissed at the moment `TicketCard` renders it here (dismissal only happens later, from the dashboard), but the condition matches the field for correctness.
 
 ## Related
 
