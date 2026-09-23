@@ -17,6 +17,7 @@ export interface Ticket {
   summary: string;
   status: string;
   created_at: string;
+  troubleshooting_notes?: string | null;
 }
 
 export interface ChatMessage {

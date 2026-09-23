@@ -168,6 +168,14 @@ body {
   color: var(--text-muted);
 }
 
+.ticket-troubleshooting {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  border-top: 1px dashed var(--border);
+  padding-top: 6px;
+}
+
 .error-banner {
   margin: 0 20px 12px;
   padding: 8px 12px;

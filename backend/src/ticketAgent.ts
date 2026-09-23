@@ -26,6 +26,7 @@ export interface CreateTicketArgs {
   customer_name?: string;
   customer_contact?: string;
   raw_message: string;
+  troubleshooting_notes?: string;
 }
 
 const CREATE_TICKET_TOOL: Tool = {
@@ -68,6 +69,14 @@ const CREATE_TICKET_TOOL: Tool = {
         type: "string",
         description: "The customer's original description of the issue, in their own words.",
       },
+      troubleshooting_notes: {
+        type: "string",
+        description:
+          "For broadband_fault only: what basic diagnostics were already covered in the chat and what they " +
+          "found (e.g. 'wired speed test run, consistently 8Mbps vs 70Mbps plan', 'internet light solid red', " +
+          "'dial tone present, master socket test not yet tried', 'router on floor behind TV unit'). " +
+          "This saves the maintenance team from repeating steps the customer already did. Omit for other categories.",
+      },
     },
     required: ["category", "priority", "summary", "raw_message"],
   },
@@ -83,7 +92,20 @@ Rules:
 - Do not ask for information you don't need. Name and contact details are a bonus, not a requirement - log the ticket without them if the customer doesn't offer them.
 - Once you have enough information, call create_ticket exactly once. Do not describe the ticket in your reply before calling the tool - call the tool, then confirm briefly afterwards.
 - After the tool result comes back, send one short confirmation message referencing the ticket so the customer knows what happens next. Do not invent an ETA or promise a specific engineer visit time.
-- Never make up account details, order numbers, or account status - you only know what the customer tells you in this conversation.`;
+- Never make up account details, order numbers, or account status - you only know what the customer tells you in this conversation.
+
+Broadband troubleshooting playbook:
+When the issue looks like a broadband_fault, work out which of these four it is from what the customer describes, then ask ONE targeted question from the matching section below (only one round of diagnostics - don't run the whole checklist). If the customer has clearly already tried something, don't ask them to repeat it. Record what was checked and found in troubleshooting_notes so the maintenance team doesn't repeat it.
+
+1. Slow speeds: ask if they've run a speed test on a device wired directly into the router (not Wi-Fi), and whether it's consistently slow or varies through the day. If they haven't tested wired, ask them to. Note in troubleshooting_notes: whether the test was wired or Wi-Fi, the speed found vs their plan speed, and whether other devices/downloads/streaming were active.
+
+2. No connection at all: ask what colour the internet/broadband light on the router is doing (off, red, or flashing). A solid red or flashing light usually means the router's stored username/password no longer matches the line. Note the light status and whether the router has been power-cycled.
+
+3. Suspected network/line fault (especially if there's also no landline dial tone): ask them to plug a corded phone into the master socket's test socket (behind the small removable panel) and see if the fault clears. If it clears, the fault is in the home's internal wiring (not Openreach's responsibility); if it persists, it's likely an external network fault. Note which test was done and the result.
+
+4. Weak Wi-Fi / signal doesn't reach parts of the house (but wired speed is fine): ask where the router currently is (e.g. floor level, inside a cabinet, behind the TV) since router placement is usually the cause. Note the router's location and whether wired alternatives (e.g. Powerline adapters) have been considered.
+
+Use judgement: if the customer already describes symptoms that clearly point to one of these (e.g. "router light is red"), don't ask again - just log what they said in troubleshooting_notes. If it's a landline_fault rather than broadband, use playbook item 3 (dial tone / master socket test) instead.`;
 
 export interface AgentTurnResult {
   reply: string;

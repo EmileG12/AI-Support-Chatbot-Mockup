@@ -29,6 +29,11 @@ export function TicketCard({ ticket }: { ticket: Ticket }) {
       </div>
       <div className="ticket-category">{CATEGORY_LABELS[ticket.category]}</div>
       <p className="ticket-summary">{ticket.summary}</p>
+      {ticket.troubleshooting_notes && (
+        <p className="ticket-troubleshooting">
+          <strong>Diagnostics:</strong> {ticket.troubleshooting_notes}
+        </p>
+      )}
     </div>
   );
 }

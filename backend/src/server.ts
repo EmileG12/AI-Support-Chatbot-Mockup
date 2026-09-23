@@ -76,6 +76,7 @@ app.post("/api/chat", async (req, res) => {
           priority: ticket.priority,
           summary: ticket.summary,
           raw_message: ticket.raw_message,
+          troubleshooting_notes: ticket.troubleshooting_notes ?? null,
         })
         .select()
         .single();
