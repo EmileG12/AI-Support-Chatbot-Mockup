@@ -11,6 +11,12 @@ describe("TicketCard", () => {
     expect(screen.getByText("Urgent")).toBeInTheDocument();
   });
 
+  it("renders the VOIP fault category label", () => {
+    render(<TicketCard ticket={makeTicket({ category: "voip_fault" })} />);
+
+    expect(screen.getByText("VOIP fault")).toBeInTheDocument();
+  });
+
   it("shows diagnostics only when troubleshooting_notes is set", () => {
     const { rerender } = render(<TicketCard ticket={makeTicket({ troubleshooting_notes: null })} />);
     expect(screen.queryByText(/Diagnostics:/)).not.toBeInTheDocument();

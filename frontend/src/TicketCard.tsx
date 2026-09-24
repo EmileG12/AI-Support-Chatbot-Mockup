@@ -4,6 +4,7 @@ export const CATEGORY_LABELS: Record<Ticket["category"], string> = {
   broadband_fault: "Broadband fault",
   mobile_fault: "Mobile fault",
   landline_fault: "Landline fault",
+  voip_fault: "VOIP fault",
   billing: "Billing",
   provisioning: "Provisioning",
   account: "Account",

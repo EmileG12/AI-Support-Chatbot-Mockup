@@ -8,6 +8,7 @@ export const TICKET_CATEGORIES = [
   "broadband_fault",
   "mobile_fault",
   "landline_fault",
+  "voip_fault",
   "billing",
   "provisioning",
   "account",
@@ -67,7 +68,9 @@ const CREATE_TICKET_TOOL: Tool = {
         enum: TICKET_CATEGORIES as unknown as string[],
         description:
           "broadband_fault: internet down/slow/dropping. mobile_fault: SIM/signal/mobile data issues. " +
-          "landline_fault: home phone/landline - no dial tone, calls not connecting, line noise. " +
+          "landline_fault: traditional analogue home phone/landline - no dial tone, calls not connecting, line noise. " +
+          "voip_fault: digital/VOIP voice line - choppy or robotic audio, dropped calls, no dial tone, on a digital " +
+          "line rather than a traditional analogue one. " +
           "billing: invoices, payments, charges. provisioning: new orders, installs, switching provider. " +
           "account: details/password/plan changes. complaint: dissatisfaction with service received. other: anything else.",
       },
@@ -89,12 +92,12 @@ const CREATE_TICKET_TOOL: Tool = {
       troubleshooting_notes: {
         type: "string",
         description:
-          "For broadband_fault, mobile_fault and landline_fault only: what basic diagnostics were already " +
-          "covered in the chat and what they found (e.g. 'wired speed test run, consistently 8Mbps vs 70Mbps " +
-          "plan', 'internet light solid red', 'dial tone present, master socket test not yet tried', 'mesh node " +
-          "in bedroom shows poor backhaul', 'signal drops everywhere, airplane mode toggle did not help', " +
-          "'VOIP audio choppy but broadband otherwise fine'). This saves the maintenance team from repeating " +
-          "steps the customer already did. Omit for other categories.",
+          "For broadband_fault, mobile_fault, landline_fault and voip_fault only: what basic diagnostics were " +
+          "already covered in the chat and what they found (e.g. 'wired speed test run, consistently 8Mbps vs " +
+          "70Mbps plan', 'internet light solid red', 'dial tone present, master socket test not yet tried', " +
+          "'mesh node in bedroom shows poor backhaul', 'signal drops everywhere, airplane mode toggle did not " +
+          "help', 'VOIP audio choppy but broadband otherwise fine'). This saves the maintenance team from " +
+          "repeating steps the customer already did. Omit for other categories.",
       },
     },
     required: ["category", "priority", "summary", "raw_message"],
@@ -140,9 +143,10 @@ When the issue looks like a broadband_fault, work out which of these four it is 
 4. Weak Wi-Fi / signal doesn't reach parts of the house (but wired speed is fine): ask where the router currently is (e.g. floor level, inside a cabinet, behind the TV) since router placement is usually the cause. Note the router's location and whether wired alternatives (e.g. Powerline adapters) have been considered.
    - If the customer mentions a mesh Wi-Fi system (multiple pods/satellites, e.g. Google Nest, TP-Link Deco, eero): ask instead whether the affected area is far from every mesh node or genuinely between them, and whether the mesh app shows all nodes online with a good backhaul connection to the main router. A node showing as offline or "poor" backhaul is a much more specific fault than general placement. Note node count, which node(s) are affected, and backhaul status (wired or wireless) if known.
 
-5. VOIP / digital landline (a landline_fault where the customer has a digital voice line rather than a traditional phone line - increasingly common since Openreach is retiring analogue lines): ask whether the call problem (no dial tone, choppy/robotic audio, dropped calls) happens only when the broadband is also having issues, or happens even when the internet otherwise seems fine. If it correlates with broadband problems, treat it as the underlying broadband_fault instead. If broadband is fine but calls are still bad, ask if other devices are heavily using the connection at the same time (uploads/video calls can cause jitter on VOIP). Note the correlation with broadband status and any competing traffic.
+Use judgement: if the customer already describes symptoms that clearly point to one of these (e.g. "router light is red"), don't ask again - just log what they said in troubleshooting_notes. If it's a landline_fault, use playbook item 3 (dial tone / master socket test) instead. If it's a digital voice line rather than a traditional analogue phone line, it's a voip_fault - see that playbook below, not landline_fault.
 
-Use judgement: if the customer already describes symptoms that clearly point to one of these (e.g. "router light is red"), don't ask again - just log what they said in troubleshooting_notes. If it's a landline_fault and not clearly VOIP, use playbook item 3 (dial tone / master socket test) instead.
+VOIP troubleshooting playbook:
+When the issue looks like a voip_fault (a digital voice line - no dial tone, choppy/robotic audio, dropped calls - rather than a traditional analogue landline; increasingly common since Openreach is retiring analogue lines), ask ONE targeted question: whether the call problem happens only when the broadband is also having issues, or happens even when the internet otherwise seems fine. If it correlates with broadband problems, treat it as the underlying broadband_fault instead of voip_fault. If broadband is fine but calls are still bad, ask if other devices are heavily using the connection at the same time (uploads/video calls can cause jitter on VOIP). Note the correlation with broadband status and any competing traffic in troubleshooting_notes.
 
 Mobile troubleshooting playbook:
 When the issue looks like a mobile_fault, identify which of these it is and ask ONE targeted question, same rules as above (skip if already answered, log the result in troubleshooting_notes):

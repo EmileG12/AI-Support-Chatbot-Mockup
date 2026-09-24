@@ -8,7 +8,7 @@ Renders a single ticket's category, priority, summary, and (when present) troubl
 
 ## Exports
 
-- `CATEGORY_LABELS: Record<TicketCategory, string>` — display labels for the 8 categories (`broadband_fault`, `mobile_fault`, `landline_fault`, `billing`, `provisioning`, `account`, `complaint`, `other`).
+- `CATEGORY_LABELS: Record<TicketCategory, string>` — display labels for the 9 categories (`broadband_fault`, `mobile_fault`, `landline_fault`, `voip_fault`, `billing`, `provisioning`, `account`, `complaint`, `other`).
 - `PRIORITY_LABELS: Record<TicketPriority, string>` — display labels for `low`/`medium`/`high`/`urgent`.
 - `TicketCard({ ticket: Ticket })` — the component itself.
 

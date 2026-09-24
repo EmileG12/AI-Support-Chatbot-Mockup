@@ -1,6 +1,6 @@
 # tickets
 
-Defined in `supabase/migrations/20260923000000_init_chat_tickets.sql`, then altered by `20260923010000_add_landline_fault_category.sql` (added `landline_fault` to the category check), `20260923020000_add_troubleshooting_notes.sql` (added `troubleshooting_notes`), `20260923030000_add_duplicate_detection.sql` (added `possible_duplicate_of`, `duplicate_similarity`, and a trigram index), `20260923040000_add_contact_details.sql` (dropped `customer_contact`; added `customer_email`, `customer_phone`), `20260923050000_add_duplicate_dismissed.sql` (added `duplicate_dismissed`), and `20260924000000_add_address_and_account_holder.sql` (added `customer_address`, `customer_postcode`, `customer_is_account_holder`).
+Defined in `supabase/migrations/20260923000000_init_chat_tickets.sql`, then altered by `20260923010000_add_landline_fault_category.sql` (added `landline_fault` to the category check), `20260923020000_add_troubleshooting_notes.sql` (added `troubleshooting_notes`), `20260923030000_add_duplicate_detection.sql` (added `possible_duplicate_of`, `duplicate_similarity`, and a trigram index), `20260923040000_add_contact_details.sql` (dropped `customer_contact`; added `customer_email`, `customer_phone`), `20260923050000_add_duplicate_dismissed.sql` (added `duplicate_dismissed`), `20260924000000_add_address_and_account_holder.sql` (added `customer_address`, `customer_postcode`, `customer_is_account_holder`), and `20260924010000_add_voip_fault_category.sql` (added `voip_fault` to the category check).
 
 ## Purpose
 
@@ -17,7 +17,7 @@ create table tickets (
   customer_email text,
   customer_phone text,
   category text not null check (category in (
-    'broadband_fault', 'mobile_fault', 'landline_fault', 'billing', 'provisioning', 'account', 'complaint', 'other'
+    'broadband_fault', 'mobile_fault', 'landline_fault', 'voip_fault', 'billing', 'provisioning', 'account', 'complaint', 'other'
   )),
   priority text not null check (priority in ('low', 'medium', 'high', 'urgent')),
   status text not null default 'open' check (status in ('open', 'in_progress', 'resolved', 'closed')),
@@ -43,7 +43,7 @@ RLS enabled, no policies (see [docs/rls-policies/README.md](../rls-policies/READ
 
 - `category` — see [ticketAgent's `TICKET_CATEGORIES`](../backend-services/ticketAgent.md) for the authoritative list; the check constraint must be kept in sync with it by hand (they're not generated from a shared source).
 - `customer_name`/`customer_email`/`customer_phone`/`customer_address`/`customer_postcode`/`customer_is_account_holder` — not part of the `create_ticket` tool call; copied from the parent `conversations` row (already confirmed by this point) when the ticket is inserted. See [conversationFlow](../backend-services/conversationFlow.md).
-- `troubleshooting_notes` — populated for `broadband_fault`, `mobile_fault`, `landline_fault` only; see [ticketAgent](../backend-services/ticketAgent.md#system-prompt-structure) for what triggers it.
+- `troubleshooting_notes` — populated for `broadband_fault`, `mobile_fault`, `landline_fault` and `voip_fault` only; see [ticketAgent](../backend-services/ticketAgent.md#system-prompt-structure) for what triggers it.
 - `possible_duplicate_of` / `duplicate_similarity` — set via [find_possible_duplicate_ticket](../rpc-functions/find_possible_duplicate_ticket.md) at insert time; never updated afterward.
 - `duplicate_dismissed` — set to `true` by staff via `PATCH /api/tickets/:id` when a flagged duplicate is a false positive. `possible_duplicate_of`/`duplicate_similarity` are deliberately left in place as audit history — this column only controls whether the duplicate warning is *shown* (in [StaffDashboard](../components/StaffDashboard.md) and [TicketCard](../components/TicketCard.md)), not whether the link exists.
 
