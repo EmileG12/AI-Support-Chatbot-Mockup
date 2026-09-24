@@ -1,10 +1,10 @@
 # tickets
 
-Defined in `supabase/migrations/20260923000000_init_chat_tickets.sql`, then altered by `20260923010000_add_landline_fault_category.sql` (added `landline_fault` to the category check), `20260923020000_add_troubleshooting_notes.sql` (added `troubleshooting_notes`), `20260923030000_add_duplicate_detection.sql` (added `possible_duplicate_of`, `duplicate_similarity`, and a trigram index), `20260923040000_add_contact_details.sql` (dropped `customer_contact`; added `customer_email`, `customer_phone`), and `20260923050000_add_duplicate_dismissed.sql` (added `duplicate_dismissed`).
+Defined in `supabase/migrations/20260923000000_init_chat_tickets.sql`, then altered by `20260923010000_add_landline_fault_category.sql` (added `landline_fault` to the category check), `20260923020000_add_troubleshooting_notes.sql` (added `troubleshooting_notes`), `20260923030000_add_duplicate_detection.sql` (added `possible_duplicate_of`, `duplicate_similarity`, and a trigram index), `20260923040000_add_contact_details.sql` (dropped `customer_contact`; added `customer_email`, `customer_phone`), `20260923050000_add_duplicate_dismissed.sql` (added `duplicate_dismissed`), and `20260924000000_add_address_and_account_holder.sql` (added `customer_address`, `customer_postcode`, `customer_is_account_holder`).
 
 ## Purpose
 
-One row per logged support ticket: the AI's classification (`category`, `priority`, `summary`), the confirmed contact details copied from the parent conversation (`customer_name`, `customer_email`, `customer_phone`), what the customer said (`raw_message`), troubleshooting diagnostics already covered, its lifecycle `status`, and any duplicate-ticket flag.
+One row per logged support ticket: the AI's classification (`category`, `priority`, `summary`), the confirmed contact details copied from the parent conversation (`customer_name`, `customer_email`, `customer_phone`, `customer_address`, `customer_postcode`, `customer_is_account_holder`), what the customer said (`raw_message`), troubleshooting diagnostics already covered, its lifecycle `status`, and any duplicate-ticket flag.
 
 ## Current DDL (combined, in current-shape order)
 
@@ -26,7 +26,10 @@ create table tickets (
   troubleshooting_notes text,
   possible_duplicate_of uuid references tickets(id),
   duplicate_similarity numeric,
-  duplicate_dismissed boolean not null default false
+  duplicate_dismissed boolean not null default false,
+  customer_address text,
+  customer_postcode text,
+  customer_is_account_holder boolean
 );
 
 create index tickets_conversation_id_idx on tickets(conversation_id);
@@ -39,7 +42,7 @@ RLS enabled, no policies (see [docs/rls-policies/README.md](../rls-policies/READ
 ## Column notes
 
 - `category` — see [ticketAgent's `TICKET_CATEGORIES`](../backend-services/ticketAgent.md) for the authoritative list; the check constraint must be kept in sync with it by hand (they're not generated from a shared source).
-- `customer_name`/`customer_email`/`customer_phone` — not part of the `create_ticket` tool call; copied from the parent `conversations` row (already confirmed by this point) when the ticket is inserted. See [conversationFlow](../backend-services/conversationFlow.md).
+- `customer_name`/`customer_email`/`customer_phone`/`customer_address`/`customer_postcode`/`customer_is_account_holder` — not part of the `create_ticket` tool call; copied from the parent `conversations` row (already confirmed by this point) when the ticket is inserted. See [conversationFlow](../backend-services/conversationFlow.md).
 - `troubleshooting_notes` — populated for `broadband_fault`, `mobile_fault`, `landline_fault` only; see [ticketAgent](../backend-services/ticketAgent.md#system-prompt-structure) for what triggers it.
 - `possible_duplicate_of` / `duplicate_similarity` — set via [find_possible_duplicate_ticket](../rpc-functions/find_possible_duplicate_ticket.md) at insert time; never updated afterward.
 - `duplicate_dismissed` — set to `true` by staff via `PATCH /api/tickets/:id` when a flagged duplicate is a false positive. `possible_duplicate_of`/`duplicate_similarity` are deliberately left in place as audit history — this column only controls whether the duplicate warning is *shown* (in [StaffDashboard](../components/StaffDashboard.md) and [TicketCard](../components/TicketCard.md)), not whether the link exists.

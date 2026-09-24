@@ -4,10 +4,11 @@
 
 ## Purpose
 
-Shown in [App](App.md) once the chat agent has captured a name/email/phone (via
-`collect_contact_details` — see [ticketAgent](../backend-services/ticketAgent.md)) but before the
-customer has confirmed them. Displays the captured details with "Yes, that's correct" and "Edit
-details" buttons, replacing the normal chat input while it's open.
+Shown in [App](App.md) once the chat agent has captured name/email/phone/address/postcode/whether
+the customer is the account holder (via `collect_contact_details` — see
+[ticketAgent](../backend-services/ticketAgent.md)) but before the customer has confirmed them.
+Displays the captured details (account holder shown as "Yes"/"No") with "Yes, that's correct" and
+"Edit details" buttons, replacing the normal chat input while it's open.
 
 ## Props
 

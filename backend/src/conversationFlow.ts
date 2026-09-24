@@ -5,7 +5,11 @@ import { findPossibleDuplicateTicket } from "./duplicates.js";
 import { validateContactDetails, type ContactDetails } from "./contactValidation.js";
 
 export function formatContactConfirmation(contact: ContactDetails): string {
-  return `Just to confirm, that's:\nName: ${contact.name}\nEmail: ${contact.email}\nPhone: ${contact.phone}\n\nIs that all correct?`;
+  return (
+    `Just to confirm, that's:\nName: ${contact.name}\nEmail: ${contact.email}\nPhone: ${contact.phone}\n` +
+    `Address: ${contact.address}\nPostcode: ${contact.postcode}\n` +
+    `Account holder: ${contact.isAccountHolder ? "Yes" : "No"}\n\nIs that all correct?`
+  );
 }
 
 async function loadHistory(conversationId: string): Promise<MessageParam[]> {
@@ -45,7 +49,9 @@ export async function insertUserMessage(conversationId: string, content: string)
 async function createTicketForConversation(conversationId: string, ticket: CreateTicketArgs) {
   const { data: conversation } = await supabase
     .from("conversations")
-    .select("customer_name, customer_email, customer_phone")
+    .select(
+      "customer_name, customer_email, customer_phone, customer_address, customer_postcode, customer_is_account_holder"
+    )
     .eq("id", conversationId)
     .single();
 
@@ -61,6 +67,9 @@ async function createTicketForConversation(conversationId: string, ticket: Creat
       customer_name: conversation?.customer_name ?? null,
       customer_email: conversation?.customer_email ?? null,
       customer_phone: conversation?.customer_phone ?? null,
+      customer_address: conversation?.customer_address ?? null,
+      customer_postcode: conversation?.customer_postcode ?? null,
+      customer_is_account_holder: conversation?.customer_is_account_holder ?? null,
       category: ticket.category,
       priority: ticket.priority,
       summary: ticket.summary,
@@ -105,6 +114,9 @@ export async function runAndPersistTurn(conversationId: string): Promise<TurnRes
         customer_name: pendingContact.name,
         customer_email: pendingContact.email,
         customer_phone: pendingContact.phone,
+        customer_address: pendingContact.address,
+        customer_postcode: pendingContact.postcode,
+        customer_is_account_holder: pendingContact.isAccountHolder,
       })
       .eq("id", conversationId);
 
@@ -148,7 +160,9 @@ export async function confirmPendingContact(
 ): Promise<ContactActionResult | { error: string }> {
   const { data: conversation, error } = await supabase
     .from("conversations")
-    .select("customer_name, customer_email, customer_phone, contact_confirmed")
+    .select(
+      "customer_name, customer_email, customer_phone, customer_address, customer_postcode, customer_is_account_holder, contact_confirmed"
+    )
     .eq("id", conversationId)
     .single();
   if (error || !conversation) return { error: "Conversation not found" };
@@ -158,6 +172,9 @@ export async function confirmPendingContact(
     name: conversation.customer_name ?? undefined,
     email: conversation.customer_email ?? undefined,
     phone: conversation.customer_phone ?? undefined,
+    address: conversation.customer_address ?? undefined,
+    postcode: conversation.customer_postcode ?? undefined,
+    isAccountHolder: conversation.customer_is_account_holder ?? undefined,
   };
   const validationError = validateContactDetails(candidate);
   if (validationError) return { error: validationError };
@@ -177,6 +194,9 @@ export async function overwriteContact(
     name: input.name!.trim(),
     email: input.email!.trim(),
     phone: input.phone!.trim(),
+    address: input.address!.trim(),
+    postcode: input.postcode!.trim(),
+    isAccountHolder: input.isAccountHolder!,
   };
 
   await supabase
@@ -185,11 +205,16 @@ export async function overwriteContact(
       customer_name: contact.name,
       customer_email: contact.email,
       customer_phone: contact.phone,
+      customer_address: contact.address,
+      customer_postcode: contact.postcode,
+      customer_is_account_holder: contact.isAccountHolder,
     })
     .eq("id", conversationId);
 
   return finalizeContact(
     conversationId,
-    `Actually, here are my correct details - Name: ${contact.name}, Email: ${contact.email}, Phone: ${contact.phone}.`
+    `Actually, here are my correct details - Name: ${contact.name}, Email: ${contact.email}, ` +
+      `Phone: ${contact.phone}, Address: ${contact.address}, Postcode: ${contact.postcode}, ` +
+      `Account holder: ${contact.isAccountHolder ? "Yes" : "No"}.`
   );
 }

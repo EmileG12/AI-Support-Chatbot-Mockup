@@ -7,7 +7,7 @@ presentation over its props.
 
 ## Covers
 
-- Renders the captured name/email/phone.
+- Renders the captured name/email/phone/address/postcode, and account holder as "Yes"/"No".
 - "Yes, that's correct" calls `onConfirm`.
 - "Edit details" calls `onEdit`.
 - Both buttons are disabled while `isSubmitting` is true.

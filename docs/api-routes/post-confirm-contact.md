@@ -10,10 +10,10 @@ No body.
 
 ## Behavior
 
-1. Loads the conversation's stored (unconfirmed) `customer_name`/`customer_email`/`customer_phone`
-   and `contact_confirmed`. `400` if the conversation isn't found, or if contact is already
-   confirmed, or if the stored details fail
-   [validateContactDetails](../backend-services/contactValidation.md).
+1. Loads the conversation's stored (unconfirmed) `customer_name`/`customer_email`/`customer_phone`/
+   `customer_address`/`customer_postcode`/`customer_is_account_holder` and `contact_confirmed`.
+   `400` if the conversation isn't found, or if contact is already confirmed, or if the stored
+   details fail [validateContactDetails](../backend-services/contactValidation.md).
 2. Marks `contact_confirmed = true`.
 3. Inserts a synthetic `"Yes, that's correct."` **user** message (not an assistant one — see
    [conversationFlow](../backend-services/conversationFlow.md) for why that matters).

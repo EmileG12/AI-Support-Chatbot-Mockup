@@ -3,7 +3,14 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContactConfirmCard } from "./ContactConfirmCard";
 
-const CONTACT = { name: "Jane Doe", email: "jane@example.com", phone: "07700 900000" };
+const CONTACT = {
+  name: "Jane Doe",
+  email: "jane@example.com",
+  phone: "07700 900000",
+  address: "1 High Street",
+  postcode: "SW1A 1AA",
+  isAccountHolder: true,
+};
 
 describe("ContactConfirmCard", () => {
   it("renders the captured contact details", () => {
@@ -12,6 +19,9 @@ describe("ContactConfirmCard", () => {
     expect(screen.getByText("Jane Doe")).toBeInTheDocument();
     expect(screen.getByText("jane@example.com")).toBeInTheDocument();
     expect(screen.getByText("07700 900000")).toBeInTheDocument();
+    expect(screen.getByText("1 High Street")).toBeInTheDocument();
+    expect(screen.getByText("SW1A 1AA")).toBeInTheDocument();
+    expect(screen.getByText("Yes", { selector: "dd" })).toBeInTheDocument();
   });
 
   it("calls onConfirm when 'Yes' is clicked", async () => {

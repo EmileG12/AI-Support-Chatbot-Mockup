@@ -15,7 +15,7 @@ const WELCOME_MESSAGE: ChatMessage = {
   id: "welcome",
   role: "assistant",
   content:
-    "Hi, I'm the Fenmoor Telecom support assistant. Before we get started, could I take your name, email address and phone number so our team can follow up with you after this chat?",
+    "Hi, I'm the Fenmoor Telecom support assistant. Before we get started, could I take your name, email address, phone number, full address, postcode, and confirm whether you're the account holder, so our team can follow up with you after this chat?",
 };
 
 function App() {

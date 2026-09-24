@@ -3,7 +3,14 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContactForm } from "./ContactForm";
 
-const INITIAL = { name: "Jane Doe", email: "jane@example.com", phone: "07700 900000" };
+const INITIAL = {
+  name: "Jane Doe",
+  email: "jane@example.com",
+  phone: "07700 900000",
+  address: "1 High Street",
+  postcode: "SW1A 1AA",
+  isAccountHolder: true,
+};
 
 describe("ContactForm", () => {
   it("pre-fills the fields from the initial contact", () => {
@@ -14,6 +21,9 @@ describe("ContactForm", () => {
     expect(screen.getByLabelText("Name")).toHaveValue("Jane Doe");
     expect(screen.getByLabelText("Email")).toHaveValue("jane@example.com");
     expect(screen.getByLabelText("Phone")).toHaveValue("07700 900000");
+    expect(screen.getByLabelText("Address")).toHaveValue("1 High Street");
+    expect(screen.getByLabelText("Postcode")).toHaveValue("SW1A 1AA");
+    expect(screen.getByLabelText(/i am the account holder/i)).toBeChecked();
   });
 
   it("submits the edited, trimmed values", async () => {
@@ -25,12 +35,16 @@ describe("ContactForm", () => {
 
     await user.clear(screen.getByLabelText("Email"));
     await user.type(screen.getByLabelText("Email"), "  jane.new@example.com  ");
+    await user.click(screen.getByLabelText(/i am the account holder/i));
     await user.click(screen.getByRole("button", { name: /save details/i }));
 
     expect(onSubmit).toHaveBeenCalledWith({
       name: "Jane Doe",
       email: "jane.new@example.com",
       phone: "07700 900000",
+      address: "1 High Street",
+      postcode: "SW1A 1AA",
+      isAccountHolder: false,
     });
   });
 

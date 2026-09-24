@@ -26,7 +26,14 @@
   conversationId: string;
   reply: string;
   ticket: Ticket | null;
-  pendingContact: { name: string; email: string; phone: string } | null;
+  pendingContact: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    postcode: string;
+    isAccountHolder: boolean;
+  } | null;
 }
 ```
 

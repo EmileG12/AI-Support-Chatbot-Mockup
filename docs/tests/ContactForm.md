@@ -7,7 +7,9 @@ state over its props.
 
 ## Covers
 
-- Fields are pre-filled from the `initial` contact.
-- Submitting calls `onSubmit` with the edited, trimmed values.
+- Fields (name/email/phone/address/postcode as separate inputs, plus the account-holder checkbox)
+  are pre-filled from the `initial` contact.
+- Submitting calls `onSubmit` with the edited, trimmed values (including a toggled
+  `isAccountHolder`).
 - "Cancel" calls `onCancel`.
 - A given `error` prop renders as a banner.

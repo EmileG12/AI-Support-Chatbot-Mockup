@@ -23,9 +23,9 @@ against the current conversation state and persist whatever it produced."
 1. Loads the conversation's message history and its `contact_confirmed` flag (in parallel).
 2. Calls `runAgentTurn(history, contactConfirmed)` (see [ticketAgent](ticketAgent.md)).
 3. If the result has `pendingContact` (Claude just called `collect_contact_details`): saves the
-   (unconfirmed) name/email/phone onto the `conversations` row, inserts the deterministic
-   confirmation text as an `assistant` message, and returns it as `reply` — **no further Claude
-   call this turn**.
+   (unconfirmed) name/email/phone/address/postcode/account-holder flag onto the `conversations`
+   row, inserts the deterministic confirmation text as an `assistant` message, and returns it as
+   `reply` — **no further Claude call this turn**.
 4. Otherwise: inserts the real `reply` as an `assistant` message if non-empty, and if a `ticket`
    was returned, creates it (looking up the conversation's confirmed contact fields, running the
    duplicate check, inserting the row, marking the conversation `resolved`).
@@ -40,8 +40,8 @@ Both `confirmPendingContact` and `overwriteContact` end by calling a shared `fin
 2. Sets `contact_confirmed = true` on the conversation (overwriting the stored fields first, for
    the correction path).
 3. Inserts a **synthetic `user`-role message** — `"Yes, that's correct."` for a plain confirm, or
-   `"Actually, here are my correct details - Name: ..., Email: ..., Phone: ...."` for a
-   correction — then calls `runAndPersistTurn`.
+   `"Actually, here are my correct details - Name: ..., Email: ..., Phone: ..., Address: ...,
+   Postcode: ..., Account holder: Yes/No."` for a correction — then calls `runAndPersistTurn`.
 
 **Why a synthetic `user` message, not an assistant one:** an earlier version inserted a
 deterministic assistant "handoff" message here before calling `runAndPersistTurn`. That left the

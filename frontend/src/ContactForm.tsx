@@ -13,10 +13,20 @@ export function ContactForm({ initial, onSubmit, onCancel, isSubmitting, error }
   const [name, setName] = useState(initial.name);
   const [email, setEmail] = useState(initial.email);
   const [phone, setPhone] = useState(initial.phone);
+  const [address, setAddress] = useState(initial.address);
+  const [postcode, setPostcode] = useState(initial.postcode);
+  const [isAccountHolder, setIsAccountHolder] = useState(initial.isAccountHolder);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    onSubmit({ name: name.trim(), email: email.trim(), phone: phone.trim() });
+    onSubmit({
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      address: address.trim(),
+      postcode: postcode.trim(),
+      isAccountHolder,
+    });
   }
 
   return (
@@ -44,6 +54,33 @@ export function ContactForm({ initial, onSubmit, onCancel, isSubmitting, error }
           disabled={isSubmitting}
           required
         />
+      </label>
+      <label>
+        Address
+        <input
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          disabled={isSubmitting}
+          required
+        />
+      </label>
+      <label>
+        Postcode
+        <input
+          value={postcode}
+          onChange={(e) => setPostcode(e.target.value)}
+          disabled={isSubmitting}
+          required
+        />
+      </label>
+      <label className="checkbox-label">
+        <input
+          type="checkbox"
+          checked={isAccountHolder}
+          onChange={(e) => setIsAccountHolder(e.target.checked)}
+          disabled={isSubmitting}
+        />
+        I am the account holder
       </label>
 
       {error && <div className="error-banner">{error}</div>}

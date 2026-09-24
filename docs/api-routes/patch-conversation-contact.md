@@ -8,17 +8,18 @@ submitted the [ContactForm](../components/ContactForm.md).
 ## Request
 
 ```ts
-{ name: string; email: string; phone: string }
+{ name: string; email: string; phone: string; address: string; postcode: string; isAccountHolder: boolean }
 ```
 
 ## Behavior
 
 1. Validates the body with [validateContactDetails](../backend-services/contactValidation.md).
    `400` with the specific validation error if it fails — nothing is written to Supabase.
-2. Overwrites `customer_name`/`customer_email`/`customer_phone` on the conversation and marks
+2. Overwrites `customer_name`/`customer_email`/`customer_phone`/`customer_address`/
+   `customer_postcode`/`customer_is_account_holder` on the conversation and marks
    `contact_confirmed = true`.
 3. Inserts a synthetic **user** message: `"Actually, here are my correct details - Name: ...,
-   Email: ..., Phone: ...."`.
+   Email: ..., Phone: ..., Address: ..., Postcode: ..., Account holder: Yes/No."`.
 4. Calls `runAndPersistTurn` and returns its `reply`/`ticket`, same as the confirm endpoint — one
    real Claude call, no separate re-confirmation round.
 

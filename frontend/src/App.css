@@ -320,3 +320,16 @@ body {
   outline: 2px solid var(--brand);
   outline-offset: -1px;
 }
+
+.contact-form label.checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.contact-form label.checkbox-label input {
+  padding: 0;
+  width: auto;
+}

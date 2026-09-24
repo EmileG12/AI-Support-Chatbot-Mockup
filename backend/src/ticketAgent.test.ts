@@ -40,7 +40,14 @@ describe("runAgentTurn", () => {
           type: "tool_use",
           id: "toolu_contact",
           name: "collect_contact_details",
-          input: { name: "Jane Doe", email: "jane@example.com", phone: "07700 900000" },
+          input: {
+            name: "Jane Doe",
+            email: "jane@example.com",
+            phone: "07700 900000",
+            address: "1 High Street",
+            postcode: "SW1A 1AA",
+            is_account_holder: true,
+          },
         },
       ],
     });
@@ -51,7 +58,14 @@ describe("runAgentTurn", () => {
     expect(result).toEqual({
       reply: "",
       ticket: null,
-      pendingContact: { name: "Jane Doe", email: "jane@example.com", phone: "07700 900000" },
+      pendingContact: {
+        name: "Jane Doe",
+        email: "jane@example.com",
+        phone: "07700 900000",
+        address: "1 High Street",
+        postcode: "SW1A 1AA",
+        isAccountHolder: true,
+      },
     });
   });
 

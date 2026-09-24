@@ -16,6 +16,9 @@ export interface ContactDetails {
   name: string;
   email: string;
   phone: string;
+  address: string;
+  postcode: string;
+  isAccountHolder: boolean;
 }
 
 export interface Ticket {
@@ -30,6 +33,9 @@ export interface Ticket {
   customer_name?: string | null;
   customer_email?: string | null;
   customer_phone?: string | null;
+  customer_address?: string | null;
+  customer_postcode?: string | null;
+  customer_is_account_holder?: boolean | null;
   troubleshooting_notes?: string | null;
   possible_duplicate_of?: string | null;
   duplicate_similarity?: number | null;

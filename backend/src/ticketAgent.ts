@@ -34,17 +34,23 @@ export interface CreateTicketArgs {
 const COLLECT_CONTACT_TOOL: Tool = {
   name: "collect_contact_details",
   description:
-    "Record the customer's contact details once you have their name, email address and phone number. " +
-    "Call this exactly once, as soon as you have all three - do not call it again after it succeeds, " +
-    "even if the customer keeps chatting.",
+    "Record the customer's contact details once you have their name, email address, phone number, " +
+    "full address, postcode, and whether they are the account holder. Call this exactly once, as soon " +
+    "as you have all of them - do not call it again after it succeeds, even if the customer keeps chatting.",
   input_schema: {
     type: "object",
     properties: {
       name: { type: "string", description: "The customer's full name." },
       email: { type: "string", description: "The customer's email address." },
       phone: { type: "string", description: "The customer's phone number." },
+      address: { type: "string", description: "The customer's full address, excluding postcode." },
+      postcode: { type: "string", description: "The customer's postcode." },
+      is_account_holder: {
+        type: "boolean",
+        description: "True if the customer is the account holder, false if they're calling on someone else's behalf.",
+      },
     },
-    required: ["name", "email", "phone"],
+    required: ["name", "email", "phone", "address", "postcode", "is_account_holder"],
   },
 };
 
@@ -110,9 +116,9 @@ const SYSTEM_PROMPT = `You are the first-line support assistant for Fenmoor Tele
 Your job, in order: first collect the customer's contact details, then understand their issue and log a support ticket for it using the create_ticket tool.
 
 Contact details first:
-- Before discussing any issue in depth, get the customer's full name, email address and phone number - the support team needs these to follow up after the chat ends.
-- If the customer describes their issue before giving contact details, briefly acknowledge it (don't ignore them) but still ask for name, email and phone before going further into troubleshooting.
-- Once you have all three, call collect_contact_details exactly once. A confirmation prompt is then shown to the customer outside of this chat, so you won't see it in the transcript - the next message you see from them will be exactly "Yes, that's correct." (confirming) or a message starting "Actually, here are my correct details - ..." (correcting). Either message means contact details are now fully settled and confirmed - the collect_contact_details tool is deliberately not offered to you anymore at this point, and you should NOT restate or re-ask to confirm the details yourself in your reply (do not write anything like "just to confirm, that's..."). Simply treat contact as done and respond to whatever the customer needs next - continue their issue if they already mentioned one, otherwise ask what you can help with.
+- Before discussing any issue in depth, get the customer's full name, email address, phone number, full address, postcode, and whether they are the account holder - the support team needs these to follow up after the chat ends and to know who they're dealing with.
+- If the customer describes their issue before giving contact details, briefly acknowledge it (don't ignore them) but still ask for all of the above before going further into troubleshooting.
+- Once you have all of them, call collect_contact_details exactly once. A confirmation prompt is then shown to the customer outside of this chat, so you won't see it in the transcript - the next message you see from them will be exactly "Yes, that's correct." (confirming) or a message starting "Actually, here are my correct details - ..." (correcting). Either message means contact details are now fully settled and confirmed - the collect_contact_details tool is deliberately not offered to you anymore at this point, and you should NOT restate or re-ask to confirm the details yourself in your reply (do not write anything like "just to confirm, that's..."). Simply treat contact as done and respond to whatever the customer needs next - continue their issue if they already mentioned one, otherwise ask what you can help with.
 - Do not call create_ticket before contact details have been confirmed.
 
 Rules:
@@ -185,7 +191,23 @@ export async function runAgentTurn(
   if (toolUse.name === "collect_contact_details") {
     // No follow-up call here: the confirmation shown to the customer is a fixed
     // template built in code from these fields, not something Claude needs to phrase.
-    return { reply: "", ticket: null, pendingContact: toolUse.input as ContactDetails };
+    const input = toolUse.input as {
+      name: string;
+      email: string;
+      phone: string;
+      address: string;
+      postcode: string;
+      is_account_holder: boolean;
+    };
+    const pendingContact: ContactDetails = {
+      name: input.name,
+      email: input.email,
+      phone: input.phone,
+      address: input.address,
+      postcode: input.postcode,
+      isAccountHolder: input.is_account_holder,
+    };
+    return { reply: "", ticket: null, pendingContact };
   }
 
   const ticket = toolUse.input as CreateTicketArgs;

@@ -5,9 +5,9 @@
 ## Purpose
 
 Shown in [App](App.md) after the customer clicks "Edit details" on
-[ContactConfirmCard](ContactConfirmCard.md) — three labeled inputs (name/email/phone) pre-filled
-from the captured (possibly wrong) values, a "Save details" submit, and "Cancel" to go back to the
-confirm card.
+[ContactConfirmCard](ContactConfirmCard.md) — labeled inputs (name/email/phone/address/postcode as
+separate fields, plus an "I am the account holder" checkbox) pre-filled from the captured
+(possibly wrong) values, a "Save details" submit, and "Cancel" to go back to the confirm card.
 
 ## Props
 

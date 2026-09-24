@@ -17,6 +17,12 @@ export function ContactConfirmCard({ contact, onConfirm, onEdit, isSubmitting }:
         <dd>{contact.email}</dd>
         <dt>Phone</dt>
         <dd>{contact.phone}</dd>
+        <dt>Address</dt>
+        <dd>{contact.address}</dd>
+        <dt>Postcode</dt>
+        <dd>{contact.postcode}</dd>
+        <dt>Account holder</dt>
+        <dd>{contact.isAccountHolder ? "Yes" : "No"}</dd>
       </dl>
       <div className="contact-confirm-actions">
         <button type="button" onClick={onConfirm} disabled={isSubmitting}>

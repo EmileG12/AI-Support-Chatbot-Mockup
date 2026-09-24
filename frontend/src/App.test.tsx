@@ -17,7 +17,14 @@ const mockSendChatMessage = vi.mocked(sendChatMessage);
 const mockConfirmContact = vi.mocked(confirmContact);
 const mockSubmitContact = vi.mocked(submitContact);
 
-const CONTACT = { name: "Jane Doe", email: "jane@example.com", phone: "07700 900000" };
+const CONTACT = {
+  name: "Jane Doe",
+  email: "jane@example.com",
+  phone: "07700 900000",
+  address: "1 High Street",
+  postcode: "SW1A 1AA",
+  isAccountHolder: true,
+};
 
 function renderApp() {
   return render(
@@ -174,6 +181,9 @@ describe("App", () => {
       name: "Jane Doe",
       email: "jane.doe@example.com",
       phone: "07700 900000",
+      address: "1 High Street",
+      postcode: "SW1A 1AA",
+      isAccountHolder: true,
     });
     expect(await screen.findByText("Updated my contact details.")).toBeInTheDocument();
     expect(await screen.findByText("What can I help you with today?")).toBeInTheDocument();

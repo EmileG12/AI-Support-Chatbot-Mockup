@@ -11,7 +11,7 @@ upfront contact-collection flow.
 ## Behavior
 
 - Keeps `messages: ChatMessage[]` in local state, seeded with a fixed welcome message that asks
-  for name/email/phone.
+  for name/email/phone/address/postcode/whether they're the account holder.
 - Keeps `conversationId: string | null`; `null` until the first backend response, then reused for
   every subsequent turn in the session (no persistence across a page reload).
 - On submit, calls `sendChatMessage` (see [docs/frontend-utils/sendChatMessage.md](../frontend-utils/sendChatMessage.md)), appends the assistant's reply, and:

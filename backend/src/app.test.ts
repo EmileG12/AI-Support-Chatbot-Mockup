@@ -158,7 +158,14 @@ describe("POST /api/chat", () => {
     });
     queueResult({ error: null, data: null }); // assistant message insert
     queueResult({
-      data: { customer_name: "Jane Doe", customer_email: "jane@example.com", customer_phone: "07700900000" },
+      data: {
+        customer_name: "Jane Doe",
+        customer_email: "jane@example.com",
+        customer_phone: "07700900000",
+        customer_address: "1 High Street",
+        customer_postcode: "SW1A 1AA",
+        customer_is_account_holder: true,
+      },
       error: null,
     }); // conversation contact lookup
     mockFindDuplicate.mockResolvedValueOnce({ id: "dup-1", summary: "Existing outage report", similarity: 0.5 });
@@ -184,7 +191,14 @@ describe("POST /api/chat", () => {
     mockRunAgentTurn.mockResolvedValueOnce({
       reply: "",
       ticket: null,
-      pendingContact: { name: "Jane Doe", email: "jane@example.com", phone: "07700900000" },
+      pendingContact: {
+        name: "Jane Doe",
+        email: "jane@example.com",
+        phone: "07700900000",
+        address: "1 High Street",
+        postcode: "SW1A 1AA",
+        isAccountHolder: true,
+      },
     });
     queueResult({ error: null, data: null }); // conversation contact-fields update
     queueResult({ error: null, data: null }); // assistant confirmation message insert
@@ -195,7 +209,14 @@ describe("POST /api/chat", () => {
 
     expect(res.status).toBe(200);
     expect(mockRunAgentTurn).toHaveBeenCalledTimes(1);
-    expect(res.body.pendingContact).toEqual({ name: "Jane Doe", email: "jane@example.com", phone: "07700900000" });
+    expect(res.body.pendingContact).toEqual({
+      name: "Jane Doe",
+      email: "jane@example.com",
+      phone: "07700900000",
+      address: "1 High Street",
+      postcode: "SW1A 1AA",
+      isAccountHolder: true,
+    });
     expect(res.body.ticket).toBeNull();
     expect(res.body.reply).toContain("Jane Doe");
     expect(res.body.reply).toContain("Is that all correct?");
@@ -216,6 +237,9 @@ describe("POST /api/conversations/:id/confirm-contact", () => {
         customer_name: "Jane Doe",
         customer_email: "jane@example.com",
         customer_phone: "07700900000",
+        customer_address: "1 High Street",
+        customer_postcode: "SW1A 1AA",
+        customer_is_account_holder: true,
         contact_confirmed: false,
       },
       error: null,
@@ -291,7 +315,14 @@ describe("PATCH /api/conversations/:id/contact", () => {
 
     const res = await request(app)
       .patch("/api/conversations/existing-conv-id/contact")
-      .send({ name: "Jane Doe", email: "jane@new-example.com", phone: "07700900001" });
+      .send({
+        name: "Jane Doe",
+        email: "jane@new-example.com",
+        phone: "07700900001",
+        address: "1 High Street",
+        postcode: "SW1A 1AA",
+        isAccountHolder: true,
+      });
 
     expect(res.status).toBe(200);
     expect(res.body.reply).toBe("Thanks - what can I help you with today?");

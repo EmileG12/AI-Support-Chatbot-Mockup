@@ -289,6 +289,9 @@ export default function StaffDashboard() {
               {(detail.ticket.customer_name || detail.ticket.customer_email || detail.ticket.customer_phone) && (
                 <p className="detail-contact">
                   {detail.ticket.customer_name} — {detail.ticket.customer_email} — {detail.ticket.customer_phone}
+                  <br />
+                  {detail.ticket.customer_address} — {detail.ticket.customer_postcode} —{" "}
+                  {detail.ticket.customer_is_account_holder ? "Account holder" : "Not account holder"}
                 </p>
               )}
 
