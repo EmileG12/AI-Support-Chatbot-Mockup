@@ -7,7 +7,7 @@ via `supertest`, so no real port is bound — this is also the only test coverag
 [conversationFlow](../backend-services/conversationFlow.md), since it's exercised through the
 routes rather than unit-tested directly. Mocks `backend/src/supabaseClient.ts` (via
 `backend/src/test/supabaseMock.ts`), `backend/src/duplicates.ts`, and `runAgentTurn`/
-`draftTicketSummary` from `backend/src/ticketAgent.ts` (keeping its real
+`draftTicketSummary`/`draftResolutionSummary` from `backend/src/ticketAgent.ts` (keeping its real
 `TICKET_CATEGORIES`/`TICKET_PRIORITIES`/`TICKET_STATUSES` exports via `importOriginal`, since
 `PATCH /api/tickets/:id` and `POST /api/conversations/:id/staff-create-ticket` validate against
 them).
@@ -56,9 +56,13 @@ them).
 - `POST /api/conversations/:id/staff-message` rejects a blank message without touching Supabase,
   400s unless the conversation is currently `"live"`, and otherwise inserts and returns the
   `role: "staff"` message.
-- `POST /api/conversations/:id/staff-create-ticket` 400s on an invalid category without touching
-  Supabase, and on valid input creates the ticket via the same shared path
-  `createTicketForConversation` uses for the normal `create_ticket` tool call.
+- `POST /api/conversations/:id/staff-create-ticket` 400s on an invalid category, an invalid
+  `status`, and `status: "resolved"` without `resolution_notes` (no Supabase call in any of these);
+  on valid input creates the ticket via the same shared path `createTicketForConversation` uses for
+  the normal `create_ticket` tool call; with `status: "resolved"` and `resolution_notes` set, both
+  land on the inserted row.
+- `POST /api/conversations/:id/draft-resolution` returns the mocked `draftResolutionSummary`
+  result as `{ resolution }`.
 
 Uses `backend/src/test/supabaseMock.ts`'s chainable query-builder mock: each `await
 supabase.from(...)` call in the code under test consumes the next result queued with

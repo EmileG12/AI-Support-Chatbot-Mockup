@@ -1,6 +1,12 @@
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import { supabase } from "./supabaseClient.js";
-import { runAgentTurn, draftTicketSummary, type CreateTicketArgs } from "./ticketAgent.js";
+import {
+  runAgentTurn,
+  draftTicketSummary,
+  draftResolutionSummary,
+  type CreateTicketArgs,
+  type TicketStatus,
+} from "./ticketAgent.js";
 import { findPossibleDuplicateTicket } from "./duplicates.js";
 import { validateContactDetails, type ContactDetails } from "./contactValidation.js";
 import { getWorkingHours } from "./settings.js";
@@ -75,7 +81,14 @@ export async function insertUserMessage(conversationId: string, content: string)
 }
 
 
-export async function createTicketForConversation(conversationId: string, ticket: CreateTicketArgs) {
+export interface CreateTicketOptions extends CreateTicketArgs {
+  /** Defaults to the `tickets` table's default ('open') when omitted. */
+  status?: TicketStatus;
+  /** Set when creating a ticket via the "Issue resolved" flow. */
+  resolution_notes?: string;
+}
+
+export async function createTicketForConversation(conversationId: string, ticket: CreateTicketOptions) {
   const { data: conversation } = await supabase
     .from("conversations")
     .select(
@@ -89,24 +102,28 @@ export async function createTicketForConversation(conversationId: string, ticket
     `${ticket.raw_message} ${ticket.summary}`
   );
 
+  const insertPayload: Record<string, unknown> = {
+    conversation_id: conversationId,
+    customer_name: conversation?.customer_name ?? null,
+    customer_email: conversation?.customer_email ?? null,
+    customer_phone: conversation?.customer_phone ?? null,
+    customer_address: conversation?.customer_address ?? null,
+    customer_postcode: conversation?.customer_postcode ?? null,
+    customer_is_account_holder: conversation?.customer_is_account_holder ?? null,
+    category: ticket.category,
+    priority: ticket.priority,
+    summary: ticket.summary,
+    raw_message: ticket.raw_message,
+    troubleshooting_notes: ticket.troubleshooting_notes ?? null,
+    resolution_notes: ticket.resolution_notes ?? null,
+    possible_duplicate_of: duplicate?.id ?? null,
+    duplicate_similarity: duplicate?.similarity ?? null,
+  };
+  if (ticket.status) insertPayload.status = ticket.status;
+
   const { data: ticketRow, error: ticketError } = await supabase
     .from("tickets")
-    .insert({
-      conversation_id: conversationId,
-      customer_name: conversation?.customer_name ?? null,
-      customer_email: conversation?.customer_email ?? null,
-      customer_phone: conversation?.customer_phone ?? null,
-      customer_address: conversation?.customer_address ?? null,
-      customer_postcode: conversation?.customer_postcode ?? null,
-      customer_is_account_holder: conversation?.customer_is_account_holder ?? null,
-      category: ticket.category,
-      priority: ticket.priority,
-      summary: ticket.summary,
-      raw_message: ticket.raw_message,
-      troubleshooting_notes: ticket.troubleshooting_notes ?? null,
-      possible_duplicate_of: duplicate?.id ?? null,
-      duplicate_similarity: duplicate?.similarity ?? null,
-    })
+    .insert(insertPayload)
     .select()
     .single();
   if (ticketError) throw ticketError;
@@ -426,4 +443,11 @@ export async function sendStaffMessage(
   if (error) throw error;
 
   return data as StoredMessage;
+}
+
+/** Staff clicked "Issue resolved" - drafts resolution notes for them to review. */
+export async function draftResolution(conversationId: string): Promise<{ resolution: string | null }> {
+  const history = await loadHistory(conversationId);
+  const resolution = await draftResolutionSummary(history);
+  return { resolution };
 }

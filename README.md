@@ -85,9 +85,15 @@ to a queue-and-handoff model, closer to how a real support desk runs:
    and further messages just wait in the transcript.
 2. The staff-side panel's queue list shows waiting customers; clicking "Join" opens a live two-way
    chat with the customer right there, alongside an AI-drafted ticket summary (category/priority/
-   summary/diagnostics) read off the transcript for context.
+   summary/diagnostics) read off the transcript for context. That summary keeps itself current as
+   the customer sends more messages — though never by silently overwriting a field staff have
+   already hand-corrected; a conflicting update is held for staff to accept or dismiss instead.
 3. Staff can edit that draft and turn it into a real ticket, closing out the chat — reusing the
    exact same ticket-creation path (duplicate check included) the AI's own `create_ticket` calls use.
+4. Or, once the issue is actually sorted, staff can click **"Issue resolved"** instead: the AI reads
+   the *entire* conversation (including the staff's own replies) and drafts a resolution summary for
+   staff to review, edit if needed, and accept — creating the ticket already `resolved`, with that
+   summary attached as its resolution notes.
 
 With the toggle **off** (the default), behavior is unchanged: the AI handles the whole conversation
 end-to-end as described above. See [docs/backend-services/conversationFlow.md](docs/backend-services/conversationFlow.md)

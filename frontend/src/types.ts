@@ -38,6 +38,7 @@ export interface Ticket {
   customer_postcode?: string | null;
   customer_is_account_holder?: boolean | null;
   troubleshooting_notes?: string | null;
+  resolution_notes?: string | null;
   possible_duplicate_of?: string | null;
   duplicate_similarity?: number | null;
   duplicate_dismissed?: boolean;
@@ -103,4 +104,8 @@ export interface ConversationMessagesResponse {
 export interface StaffJoinResponse {
   draftTicket: DraftTicket | null;
   messages: ChatMessage[];
+}
+
+export interface DraftResolutionResponse {
+  resolution: string | null;
 }

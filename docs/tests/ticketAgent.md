@@ -33,3 +33,10 @@ The mock's default export has to be a real `function`, not an arrow function, si
   on the mocked call) and returns the parsed args from a single call - no follow-up call, unlike
   `runAgentTurn`'s `create_ticket` path.
 - Returns `null` for an empty history without calling Claude at all.
+
+## `draftResolutionSummary`
+
+- Returns the plain-text resolution summary from a single call, asserting no `tools` are passed to
+  the mocked `messages.create` (unlike `draftTicketSummary`, there's no structured extraction here).
+- Returns `null` for an empty history without calling Claude at all.
+- Returns `null` when the mocked response has no text content.

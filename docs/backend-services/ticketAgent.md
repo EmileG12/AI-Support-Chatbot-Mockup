@@ -17,6 +17,7 @@ troubleshooting playbooks), and the function that drives one turn of the convers
 - `AgentTurnResult` — `{ reply: string; ticket: CreateTicketArgs | null; pendingContact: ContactDetails | null }`.
 - `runAgentTurn(history: MessageParam[], contactConfirmed: boolean): Promise<AgentTurnResult>` — see below.
 - `draftTicketSummary(history: MessageParam[]): Promise<CreateTicketArgs | null>` — a single call that force-calls `create_ticket` (via `tool_choice: { type: "tool", name: "create_ticket" }`) against the transcript so far, to extract a draft category/priority/summary for a staff member joining a live handoff to read (see [conversationFlow.staffJoinConversation](conversationFlow.md)). Not a conversational turn — nothing is persisted, no follow-up call, and it doesn't touch `pendingContact`/tool-gating at all. Returns `null` for an empty history without calling Claude.
+- `draftResolutionSummary(history: MessageParam[]): Promise<string | null>` — a single **tool-free** call that asks Claude to write a short plain-text resolution summary (what the issue was, how it was resolved) from the full transcript, for staff to review before closing a ticket via the "Issue resolved" flow (see [conversationFlow.draftResolution](conversationFlow.md)). Unlike `draftTicketSummary` there's no structured data to extract, so this just returns the response's text content - no tool, no tool_choice. Returns `null` for an empty history, or if Claude's response has no text content.
 
 ## How classification works
 
@@ -44,6 +45,8 @@ This matters because the conversation history persisted to `messages` only store
 5. **Mobile troubleshooting playbook** (4 items): no/dropping signal (location + Airplane Mode toggle), signal-but-no-data (Wi-Fi-off test, roaming), calls/texts failing (direction, Wi-Fi Calling), SIM/handset not detected (SIM swap test).
 
 In each troubleshooting case the model is instructed to ask **one** targeted diagnostic question (not the whole checklist), skip it if the customer already answered it, and record what was found in `troubleshooting_notes` so the maintenance team doesn't repeat it. This content is an original draft based on general ISP triage practice, not any real ISP's internal copy.
+
+`draftResolutionSummary` uses a separate, much smaller `RESOLUTION_SYSTEM_PROMPT` (not `SYSTEM_PROMPT`) instructing Claude to: write 2-4 sentences, third person, past tense; base it only on what's actually in the transcript (explicitly told not to invent fixes/parts/outcomes); say plainly if the actual resolution isn't clear from the chat rather than guess; and output only the summary itself, no greeting or label.
 
 ## Related
 

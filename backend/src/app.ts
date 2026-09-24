@@ -12,6 +12,7 @@ import {
   staffJoinConversation,
   sendStaffMessage,
   createTicketForConversation,
+  draftResolution,
 } from "./conversationFlow.js";
 import type { ContactDetails } from "./contactValidation.js";
 import { getWorkingHours, setWorkingHours } from "./settings.js";
@@ -167,8 +168,14 @@ app.post("/api/conversations/:id/staff-message", async (req, res) => {
   }
 });
 
+interface StaffCreateTicketBody extends Partial<CreateTicketArgs> {
+  status?: string;
+  resolution_notes?: string;
+}
+
 app.post("/api/conversations/:id/staff-create-ticket", async (req, res) => {
-  const { category, priority, summary, raw_message, troubleshooting_notes } = req.body as Partial<CreateTicketArgs>;
+  const { category, priority, summary, raw_message, troubleshooting_notes, status, resolution_notes } =
+    req.body as StaffCreateTicketBody;
 
   if (!category || !TICKET_CATEGORIES.includes(category as (typeof TICKET_CATEGORIES)[number])) {
     return res.status(400).json({ error: `Invalid category: ${category}` });
@@ -182,6 +189,12 @@ app.post("/api/conversations/:id/staff-create-ticket", async (req, res) => {
   if (!raw_message || typeof raw_message !== "string" || !raw_message.trim()) {
     return res.status(400).json({ error: "raw_message is required" });
   }
+  if (status !== undefined && !TICKET_STATUSES.includes(status as (typeof TICKET_STATUSES)[number])) {
+    return res.status(400).json({ error: `Invalid status: ${status}` });
+  }
+  if (status === "resolved" && (!resolution_notes || !resolution_notes.trim())) {
+    return res.status(400).json({ error: "resolution_notes is required when status is resolved" });
+  }
 
   try {
     const ticket = await createTicketForConversation(req.params.id, {
@@ -190,11 +203,23 @@ app.post("/api/conversations/:id/staff-create-ticket", async (req, res) => {
       summary,
       raw_message,
       troubleshooting_notes,
+      status: status as (typeof TICKET_STATUSES)[number] | undefined,
+      resolution_notes,
     });
     res.json({ ticket });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to create the ticket" });
+  }
+});
+
+app.post("/api/conversations/:id/draft-resolution", async (req, res) => {
+  try {
+    const result = await draftResolution(req.params.id);
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to draft resolution notes" });
   }
 });
 

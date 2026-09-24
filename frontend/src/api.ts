@@ -4,6 +4,7 @@ import type {
   ContactActionResponse,
   ContactDetails,
   ConversationMessagesResponse,
+  DraftResolutionResponse,
   DraftTicket,
   QueueEntry,
   Settings,
@@ -145,5 +146,26 @@ export async function createTicketFromDraft(conversationId: string, draft: Draft
     body: JSON.stringify(draft),
   });
   const data = await parseOrThrow<{ ticket: Ticket }>(res, "Failed to create the ticket");
+  return data.ticket;
+}
+
+export async function draftResolution(conversationId: string): Promise<DraftResolutionResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/draft-resolution`, {
+    method: "POST",
+  });
+  return parseOrThrow(res, "Failed to draft resolution notes");
+}
+
+export async function resolveTicketFromDraft(
+  conversationId: string,
+  draft: DraftTicket,
+  resolutionNotes: string
+): Promise<Ticket> {
+  const res = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/staff-create-ticket`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...draft, status: "resolved", resolution_notes: resolutionNotes }),
+  });
+  const data = await parseOrThrow<{ ticket: Ticket }>(res, "Failed to resolve the ticket");
   return data.ticket;
 }

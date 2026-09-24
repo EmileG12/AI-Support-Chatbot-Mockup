@@ -231,6 +231,28 @@ body {
   gap: 8px;
 }
 
+.staff-draft-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.staff-draft-buttons button.secondary {
+  background: transparent;
+  color: var(--brand);
+  border: 1px solid var(--brand);
+}
+
+.resolution-review {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.resolution-review-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .message-list {
   flex: 1;
   min-height: 360px;
@@ -386,6 +408,14 @@ body {
   margin: 6px 0 0;
   font-size: 0.8rem;
   color: var(--text-muted);
+  border-top: 1px dashed var(--border);
+  padding-top: 6px;
+}
+
+.ticket-resolution {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  color: #047857;
   border-top: 1px dashed var(--border);
   padding-top: 6px;
 }

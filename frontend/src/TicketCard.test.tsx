@@ -30,6 +30,17 @@ describe("TicketCard", () => {
     expect(screen.getByText(/Wired test: 10Mbps vs 100Mbps plan\./)).toBeInTheDocument();
   });
 
+  it("shows the resolution note only when resolution_notes is set", () => {
+    const { rerender } = render(<TicketCard ticket={makeTicket({ resolution_notes: null })} />);
+    expect(screen.queryByText(/Resolution:/)).not.toBeInTheDocument();
+
+    rerender(
+      <TicketCard ticket={makeTicket({ resolution_notes: "Resolved after a router reset." })} />
+    );
+    expect(screen.getByText(/Resolution:/)).toBeInTheDocument();
+    expect(screen.getByText(/Resolved after a router reset\./)).toBeInTheDocument();
+  });
+
   it("shows the duplicate note only when possible_duplicate_of is set", () => {
     const { rerender } = render(<TicketCard ticket={makeTicket({ possible_duplicate_of: null })} />);
     expect(screen.queryByText(/already reported/)).not.toBeInTheDocument();

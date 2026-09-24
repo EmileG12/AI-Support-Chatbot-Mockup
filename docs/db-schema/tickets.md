@@ -1,6 +1,6 @@
 # tickets
 
-Defined in `supabase/migrations/20260923000000_init_chat_tickets.sql`, then altered by `20260923010000_add_landline_fault_category.sql` (added `landline_fault` to the category check), `20260923020000_add_troubleshooting_notes.sql` (added `troubleshooting_notes`), `20260923030000_add_duplicate_detection.sql` (added `possible_duplicate_of`, `duplicate_similarity`, and a trigram index), `20260923040000_add_contact_details.sql` (dropped `customer_contact`; added `customer_email`, `customer_phone`), `20260923050000_add_duplicate_dismissed.sql` (added `duplicate_dismissed`), `20260924000000_add_address_and_account_holder.sql` (added `customer_address`, `customer_postcode`, `customer_is_account_holder`), and `20260924010000_add_voip_fault_category.sql` (added `voip_fault` to the category check).
+Defined in `supabase/migrations/20260923000000_init_chat_tickets.sql`, then altered by `20260923010000_add_landline_fault_category.sql` (added `landline_fault` to the category check), `20260923020000_add_troubleshooting_notes.sql` (added `troubleshooting_notes`), `20260923030000_add_duplicate_detection.sql` (added `possible_duplicate_of`, `duplicate_similarity`, and a trigram index), `20260923040000_add_contact_details.sql` (dropped `customer_contact`; added `customer_email`, `customer_phone`), `20260923050000_add_duplicate_dismissed.sql` (added `duplicate_dismissed`), `20260924000000_add_address_and_account_holder.sql` (added `customer_address`, `customer_postcode`, `customer_is_account_holder`), `20260924010000_add_voip_fault_category.sql` (added `voip_fault` to the category check), and `20260924040000_add_resolution_notes.sql` (added `resolution_notes`).
 
 ## Purpose
 
@@ -29,7 +29,8 @@ create table tickets (
   duplicate_dismissed boolean not null default false,
   customer_address text,
   customer_postcode text,
-  customer_is_account_holder boolean
+  customer_is_account_holder boolean,
+  resolution_notes text
 );
 
 create index tickets_conversation_id_idx on tickets(conversation_id);
@@ -46,6 +47,7 @@ RLS enabled, no policies (see [docs/rls-policies/README.md](../rls-policies/READ
 - `troubleshooting_notes` — populated for `broadband_fault`, `mobile_fault`, `landline_fault` and `voip_fault` only; see [ticketAgent](../backend-services/ticketAgent.md#system-prompt-structure) for what triggers it.
 - `possible_duplicate_of` / `duplicate_similarity` — set via [find_possible_duplicate_ticket](../rpc-functions/find_possible_duplicate_ticket.md) at insert time; never updated afterward.
 - `duplicate_dismissed` — set to `true` by staff via `PATCH /api/tickets/:id` when a flagged duplicate is a false positive. `possible_duplicate_of`/`duplicate_similarity` are deliberately left in place as audit history — this column only controls whether the duplicate warning is *shown* (in [StaffDashboard](../components/StaffDashboard.md) and [TicketCard](../components/TicketCard.md)), not whether the link exists.
+- `resolution_notes` — only set when a ticket is created via the "Issue resolved" flow from a live handoff (`status: "resolved"` set at the same time): an AI-drafted, staff-reviewed summary of how the issue was actually resolved. `null` for tickets created the normal way (`create_ticket` tool call, or "Create ticket" in [StaffChatWindow](../components/StaffChatWindow.md) without resolving). See [conversationFlow](../backend-services/conversationFlow.md)'s `draftResolution`.
 
 ## Related
 

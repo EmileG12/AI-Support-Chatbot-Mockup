@@ -12,22 +12,24 @@ vi.mock("./duplicates.js", () => ({
 
 vi.mock("./ticketAgent.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./ticketAgent.js")>();
-  return { ...actual, runAgentTurn: vi.fn(), draftTicketSummary: vi.fn() };
+  return { ...actual, runAgentTurn: vi.fn(), draftTicketSummary: vi.fn(), draftResolutionSummary: vi.fn() };
 });
 
 import { supabase, queueResult, resetSupabaseMock } from "./test/supabaseMock.js";
 import { findPossibleDuplicateTicket } from "./duplicates.js";
-import { runAgentTurn, draftTicketSummary } from "./ticketAgent.js";
+import { runAgentTurn, draftTicketSummary, draftResolutionSummary } from "./ticketAgent.js";
 import { app } from "./app.js";
 
 const mockRunAgentTurn = vi.mocked(runAgentTurn);
 const mockDraftTicketSummary = vi.mocked(draftTicketSummary);
+const mockDraftResolutionSummary = vi.mocked(draftResolutionSummary);
 const mockFindDuplicate = vi.mocked(findPossibleDuplicateTicket);
 
 beforeEach(() => {
   resetSupabaseMock();
   mockRunAgentTurn.mockReset();
   mockDraftTicketSummary.mockReset();
+  mockDraftResolutionSummary.mockReset();
   mockFindDuplicate.mockReset();
 });
 
@@ -592,5 +594,83 @@ describe("POST /api/conversations/:id/staff-create-ticket", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.ticket.id).toBe("new-ticket-id");
+  });
+
+  it("rejects an invalid status", async () => {
+    const res = await request(app).post("/api/conversations/c1/staff-create-ticket").send({
+      category: "broadband_fault",
+      priority: "high",
+      summary: "Outage",
+      raw_message: "no internet",
+      status: "not_a_real_status",
+    });
+
+    expect(res.status).toBe(400);
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it("rejects status: resolved without resolution_notes", async () => {
+    const res = await request(app).post("/api/conversations/c1/staff-create-ticket").send({
+      category: "broadband_fault",
+      priority: "high",
+      summary: "Outage",
+      raw_message: "no internet",
+      status: "resolved",
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/resolution_notes/i);
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it("creates a resolved ticket with resolution notes", async () => {
+    queueResult({
+      data: {
+        customer_name: "Jane Doe",
+        customer_email: "jane@example.com",
+        customer_phone: "07700900000",
+        customer_address: "1 High Street",
+        customer_postcode: "SW1A 1AA",
+        customer_is_account_holder: true,
+      },
+      error: null,
+    }); // conversation contact lookup
+    mockFindDuplicate.mockResolvedValueOnce(null);
+    queueResult({ data: { id: "resolved-ticket-id", status: "resolved" }, error: null }); // ticket insert
+    queueResult({ error: null, data: null }); // conversation status update
+
+    const res = await request(app).post("/api/conversations/c1/staff-create-ticket").send({
+      category: "broadband_fault",
+      priority: "high",
+      summary: "Outage",
+      raw_message: "no internet",
+      status: "resolved",
+      resolution_notes: "Resolved after a router reset confirmed by the customer.",
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ticket.id).toBe("resolved-ticket-id");
+    const insertChain = supabase.from.mock.results[1].value as { insert: ReturnType<typeof vi.fn> };
+    expect(insertChain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "resolved",
+        resolution_notes: "Resolved after a router reset confirmed by the customer.",
+      })
+    );
+  });
+});
+
+describe("POST /api/conversations/:id/draft-resolution", () => {
+  it("returns the AI-drafted resolution summary", async () => {
+    queueResult({ data: [{ role: "user", content: "my broadband is down" }], error: null }); // loadHistory
+    mockDraftResolutionSummary.mockResolvedValueOnce(
+      "Resolved after a router reset confirmed by the customer."
+    );
+
+    const res = await request(app).post("/api/conversations/c1/draft-resolution");
+
+    expect(res.status).toBe(200);
+    expect(res.body.resolution).toBe("Resolved after a router reset confirmed by the customer.");
+    expect(mockDraftResolutionSummary).toHaveBeenCalledTimes(1);
   });
 });

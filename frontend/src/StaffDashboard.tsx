@@ -26,6 +26,12 @@ function TicketDetailBody({ ticket, messages }: { ticket: Ticket; messages: Chat
         </p>
       )}
 
+      {ticket.resolution_notes && (
+        <p className="detail-resolution">
+          <strong>Resolution:</strong> {ticket.resolution_notes}
+        </p>
+      )}
+
       {(ticket.customer_name || ticket.customer_email || ticket.customer_phone) && (
         <p className="detail-contact">
           {ticket.customer_name} — {ticket.customer_email} — {ticket.customer_phone}

@@ -35,6 +35,11 @@ export function TicketCard({ ticket }: { ticket: Ticket }) {
           <strong>Diagnostics:</strong> {ticket.troubleshooting_notes}
         </p>
       )}
+      {ticket.resolution_notes && (
+        <p className="ticket-resolution">
+          <strong>Resolution:</strong> {ticket.resolution_notes}
+        </p>
+      )}
       {ticket.possible_duplicate_of && !ticket.duplicate_dismissed && (
         <p className="ticket-duplicate-note">
           This looks related to something already reported — flagged for our team to review.

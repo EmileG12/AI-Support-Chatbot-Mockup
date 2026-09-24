@@ -16,5 +16,6 @@ All in `backend/src/app.ts`. No authentication (see [docs/architecture.md](../ar
 | [GET /api/conversations/:id/messages](get-conversation-messages.md) | Poll a conversation's handoff status and transcript |
 | [POST /api/conversations/:id/staff-join](post-staff-join.md) | Staff joins a queued conversation; returns an AI-drafted summary |
 | [POST /api/conversations/:id/staff-message](post-staff-message.md) | Staff sends a message while live with a customer |
-| [POST /api/conversations/:id/staff-create-ticket](post-staff-create-ticket.md) | Staff turns the drafted summary into a real ticket |
+| [POST /api/conversations/:id/draft-resolution](post-draft-resolution.md) | AI-draft a resolution summary from the full conversation |
+| [POST /api/conversations/:id/staff-create-ticket](post-staff-create-ticket.md) | Staff turns the drafted summary (optionally resolved, with resolution notes) into a real ticket |
 | `GET /api/health` | `{ ok: true }` liveness check (not separately documented) |

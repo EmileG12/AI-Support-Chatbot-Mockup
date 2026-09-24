@@ -274,3 +274,35 @@ export async function draftTicketSummary(history: MessageParam[]): Promise<Creat
 
   return toolUse.input as CreateTicketArgs;
 }
+
+const RESOLUTION_SYSTEM_PROMPT = `You are drafting internal resolution notes for a Fenmoor Telecom support ticket a staff member is about to close as resolved.
+
+Read the full conversation (customer messages, any earlier AI replies, and the staff member's own replies) and write a concise resolution summary for the record: what the issue was and how it was resolved.
+
+Rules:
+- 2-4 sentences. Third person, past tense, professional tone.
+- Base it only on what's actually in the conversation - never invent steps, parts replaced, or outcomes that weren't mentioned.
+- If it's unclear from the transcript how the issue was actually resolved (e.g. the staff member hasn't said what fixed it), say so plainly rather than guessing - e.g. "Issue resolved by support staff; specific fix not recorded in chat."
+- Output only the resolution summary itself - no greeting, no sign-off, no "Resolution:" label.`;
+
+/**
+ * Drafts resolution notes from the full conversation for a staff member to
+ * review before closing a ticket as resolved - a plain text reply, not a tool
+ * call, since there's no structured data to extract here.
+ */
+export async function draftResolutionSummary(history: MessageParam[]): Promise<string | null> {
+  if (history.length === 0) return null;
+
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-5",
+    max_tokens: 512,
+    system: RESOLUTION_SYSTEM_PROMPT,
+    messages: history,
+  });
+
+  const textBlocks = response.content.filter(
+    (block): block is Anthropic.TextBlock => block.type === "text"
+  );
+  const text = textBlocks.map((b) => b.text).join("\n").trim();
+  return text || null;
+}

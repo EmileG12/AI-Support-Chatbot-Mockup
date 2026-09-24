@@ -19,11 +19,12 @@ drafting a ticket summary, and the staff <-> customer messaging that follows.
   `ContactActionResult = { reply: string; ticket: Record<string, unknown> | null; handoffStatus: HandoffStatus; estimatedWaitMinutes: number | null }`.
 - `formatContactConfirmation(contact)` — the fixed "Just to confirm, that's: ... Is that all correct?" template.
 - `formatQueuedMessage(waitMinutes)` — the fixed "you're in the queue, estimated wait N minutes" template.
-- `createTicketForConversation(conversationId, ticket)` — inserts a `tickets` row from a `CreateTicketArgs`, copying the conversation's confirmed contact fields, running the duplicate check, and marking the conversation `resolved`. Used by the normal `create_ticket` flow *and* by `POST /api/conversations/:id/staff-create-ticket`.
+- `createTicketForConversation(conversationId, ticket: CreateTicketOptions)` — inserts a `tickets` row, copying the conversation's confirmed contact fields, running the duplicate check, and marking the *conversation* `resolved`. `CreateTicketOptions` extends `CreateTicketArgs` with optional `status` (defaults to the table's `'open'` default when omitted) and `resolution_notes`. Used by the normal `create_ticket` flow (`CreateTicketArgs` only, no `status`/`resolution_notes`), `POST /api/conversations/:id/staff-create-ticket`'s plain "Create ticket" (same), and its "Issue resolved" path (`status: "resolved"`, `resolution_notes` set).
 - `listQueuedConversations(): Promise<QueueEntry[]>` — conversations with `handoff_status: "queued"`, oldest first, for the dashboard's queue panel.
 - `getConversationMessages(conversationId): Promise<ConversationMessagesResult | { error }>` — `{ handoffStatus, estimatedWaitMinutes, draftTicket, messages }`. Backs the polling both the customer chat and the staff chat window use.
 - `staffJoinConversation(conversationId): Promise<StaffJoinResult | { error }>` — staff clicked "Join"; see below.
 - `sendStaffMessage(conversationId, content): Promise<StoredMessage | { error }>` — staff typed a reply while live.
+- `draftResolution(conversationId): Promise<{ resolution: string | null }>` — staff clicked "Issue resolved"; loads the full history and calls `draftResolutionSummary` (see [ticketAgent](ticketAgent.md)). Purely a read - nothing is stored, unlike `updateDraftTicket` below. The resulting text is only ever persisted if/when staff accepts it via `staff-create-ticket`.
 
 ## `runAndPersistTurn`
 
@@ -79,9 +80,13 @@ than another canned message) instead of asking "what can I help with" as if noth
 4. Returns `{ draftTicket, messages }` via `getConversationMessages`.
 
 Staff can then message back and forth with the customer via `sendStaffMessage` (400s unless
-`handoff_status` is `"live"`) and both sides poll `getConversationMessages`, until staff calls
-`POST /api/conversations/:id/staff-create-ticket`, which reuses `createTicketForConversation`
-directly with the (possibly edited) draft.
+`handoff_status` is `"live"`) and both sides poll `getConversationMessages`, until staff either:
+
+- calls `POST /api/conversations/:id/staff-create-ticket` directly with the (possibly edited) draft
+  (plain "Create ticket" - ticket starts `open` as normal), or
+- clicks "Issue resolved" first (`POST .../draft-resolution` → `draftResolution`, reviewed/edited
+  client-side), then calls the same `staff-create-ticket` route with `status: "resolved"` and
+  `resolution_notes` set - the route requires `resolution_notes` whenever `status` is `"resolved"`.
 
 ## `updateDraftTicket` (module-private)
 

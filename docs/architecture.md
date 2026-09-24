@@ -59,10 +59,20 @@ A staff member joins a queued conversation from the queue panel (`POST
 ticket summary (`ticketAgent.draftTicketSummary`) so the staff member has context. From there,
 staff and customer message each other directly (`POST .../staff-message` on the staff side, the
 existing `POST /api/chat` on the customer side — which, once queued/live, just persists the message
-without invoking Claude at all) and both sides **poll** `GET .../messages` rather than getting a
-synchronous reply, since neither side can know when the other will speak next. Staff can then turn
-the (edited) draft into a real ticket via `POST .../staff-create-ticket`, which reuses the exact
-same `createTicketForConversation` path the AI's own `create_ticket` tool call uses.
+without invoking Claude at all, but *does* re-run `draftTicketSummary` over the full history so the
+drafted ticket stays current as the customer says more — see
+[conversationFlow.updateDraftTicket](backend-services/conversationFlow.md)) and both sides **poll**
+`GET .../messages` rather than getting a synchronous reply, since neither side can know when the
+other will speak next. [StaffChatWindow](components/StaffChatWindow.md) never lets a re-drafted
+field silently overwrite one staff have already hand-edited - a conflicting update is held for
+staff to accept or dismiss.
+
+Staff can then turn the (edited) draft into a real ticket via `POST .../staff-create-ticket`, which
+reuses the exact same `createTicketForConversation` path the AI's own `create_ticket` tool call
+uses - either as-is (ticket starts `open`), or, if staff clicks "Issue resolved" first (`POST
+.../draft-resolution` asks Claude for a resolution summary from the *entire* transcript, including
+staff's own replies, for review/editing), with `status: "resolved"` and that summary attached as
+`resolution_notes`.
 
 Deliberately **not** built on Supabase Realtime: that would need an anon-key client on the frontend
 and a public-read RLS policy on `messages`, widening the security surface (see "Known gaps" below)

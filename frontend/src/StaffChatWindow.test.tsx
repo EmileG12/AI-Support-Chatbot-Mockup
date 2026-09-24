@@ -8,13 +8,23 @@ vi.mock("./api", () => ({
   getConversationMessages: vi.fn(),
   sendStaffMessage: vi.fn(),
   createTicketFromDraft: vi.fn(),
+  draftResolution: vi.fn(),
+  resolveTicketFromDraft: vi.fn(),
 }));
 
-import { getConversationMessages, sendStaffMessage, createTicketFromDraft } from "./api";
+import {
+  getConversationMessages,
+  sendStaffMessage,
+  createTicketFromDraft,
+  draftResolution,
+  resolveTicketFromDraft,
+} from "./api";
 
 const mockGetConversationMessages = vi.mocked(getConversationMessages);
 const mockSendStaffMessage = vi.mocked(sendStaffMessage);
 const mockCreateTicketFromDraft = vi.mocked(createTicketFromDraft);
+const mockDraftResolution = vi.mocked(draftResolution);
+const mockResolveTicketFromDraft = vi.mocked(resolveTicketFromDraft);
 
 const DRAFT: DraftTicket = {
   category: "broadband_fault",
@@ -34,6 +44,8 @@ beforeEach(() => {
   });
   mockSendStaffMessage.mockReset();
   mockCreateTicketFromDraft.mockReset();
+  mockDraftResolution.mockReset();
+  mockResolveTicketFromDraft.mockReset();
 });
 
 afterEach(() => {
@@ -108,6 +120,79 @@ describe("StaffChatWindow", () => {
     );
     expect(await screen.findByText("Ticket #99999999 created.")).toBeInTheDocument();
     expect(onTicketCreated).toHaveBeenCalledTimes(1);
+  });
+
+  it("drafts a resolution, lets staff edit it, and resolves the ticket on accept", async () => {
+    mockDraftResolution.mockResolvedValueOnce({
+      resolution: "Resolved after a router reset confirmed by the customer.",
+    });
+    mockResolveTicketFromDraft.mockResolvedValueOnce({
+      id: "88888888-7777-6666-5555-444444444444",
+      conversation_id: "c1",
+      category: "broadband_fault",
+      priority: "high",
+      summary: "Broadband outage reported.",
+      status: "resolved",
+      created_at: "2026-09-24T12:00:00Z",
+      raw_message: "my broadband is down",
+      resolution_notes: "Resolved after a router reset - confirmed by the customer, edited.",
+    });
+    const onTicketCreated = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <StaffChatWindow
+        conversationId="c1"
+        initialDraftTicket={DRAFT}
+        initialMessages={MESSAGES}
+        onClose={vi.fn()}
+        onTicketCreated={onTicketCreated}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: /issue resolved/i }));
+
+    expect(mockDraftResolution).toHaveBeenCalledWith("c1");
+    const resolutionBox = await screen.findByDisplayValue(
+      "Resolved after a router reset confirmed by the customer."
+    );
+
+    // Staff tweaks the drafted wording before accepting.
+    fireEvent.change(resolutionBox, {
+      target: { value: "Resolved after a router reset - confirmed by the customer, edited." },
+    });
+
+    await user.click(screen.getByRole("button", { name: /accept & resolve ticket/i }));
+
+    expect(mockResolveTicketFromDraft).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ summary: "Broadband outage reported." }),
+      "Resolved after a router reset - confirmed by the customer, edited."
+    );
+    expect(await screen.findByText("Ticket #88888888 created and resolved.")).toBeInTheDocument();
+    expect(onTicketCreated).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancelling the resolution review goes back to the normal draft buttons", async () => {
+    mockDraftResolution.mockResolvedValueOnce({ resolution: "Draft resolution text." });
+    const user = userEvent.setup();
+    render(
+      <StaffChatWindow
+        conversationId="c1"
+        initialDraftTicket={DRAFT}
+        initialMessages={MESSAGES}
+        onClose={vi.fn()}
+        onTicketCreated={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: /issue resolved/i }));
+    await screen.findByDisplayValue("Draft resolution text.");
+
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+
+    expect(screen.queryByDisplayValue("Draft resolution text.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /create ticket/i })).toBeInTheDocument();
+    expect(mockResolveTicketFromDraft).not.toHaveBeenCalled();
   });
 
   it("auto-applies a re-drafted summary when staff hasn't made any manual edits", async () => {

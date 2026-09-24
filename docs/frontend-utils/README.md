@@ -17,3 +17,5 @@ All in `frontend/src/api.ts`. Base URL is `import.meta.env.VITE_API_BASE_URL ?? 
 | [staffJoin](staffJoin.md) | Staff joins a queued conversation |
 | [sendStaffMessage](sendStaffMessage.md) | Staff sends a message while live with a customer |
 | [createTicketFromDraft](createTicketFromDraft.md) | Staff turns the AI-drafted summary into a real ticket |
+| [draftResolution](draftResolution.md) | AI-draft a resolution summary from the full conversation |
+| [resolveTicketFromDraft](resolveTicketFromDraft.md) | Staff turns the draft + reviewed resolution notes into a resolved ticket |

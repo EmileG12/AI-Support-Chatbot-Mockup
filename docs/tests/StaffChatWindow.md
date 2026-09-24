@@ -3,7 +3,8 @@
 `frontend/src/StaffChatWindow.test.tsx` — suite: `frontend-unit` (`cd frontend && npm run test`)
 
 Tests [StaffChatWindow](../components/StaffChatWindow.md). Mocks the `frontend/src/api.ts` boundary
-(`getConversationMessages`, `sendStaffMessage`, `createTicketFromDraft`) — no real network calls.
+(`getConversationMessages`, `sendStaffMessage`, `createTicketFromDraft`, `draftResolution`,
+`resolveTicketFromDraft`) — no real network calls.
 
 ## Covers
 
@@ -12,6 +13,12 @@ Tests [StaffChatWindow](../components/StaffChatWindow.md). Mocks the `frontend/s
 - Editing the draft (e.g. changing priority) and clicking "Create ticket" calls
   `createTicketFromDraft` with the edited values, shows the "Ticket #... created." confirmation, and
   calls `onTicketCreated`.
+- Clicking "Issue resolved" calls `draftResolution`, shows the drafted text in an editable textarea;
+  editing it and clicking "Accept & resolve ticket" calls `resolveTicketFromDraft` with the current
+  ticket draft and the edited resolution text, and shows "Ticket #... created and resolved." (the
+  `createdTicket.status === "resolved"` wording).
+- Clicking "Issue resolved" then "Cancel" discards the review without calling
+  `resolveTicketFromDraft`, going back to the normal "Create ticket"/"Issue resolved" buttons.
 - A re-drafted `draftTicket` from a poll is applied automatically when the fields haven't been
   manually edited since the last AI draft.
 - A re-drafted `draftTicket` that arrives *after* a manual edit is held in an "AI suggests an

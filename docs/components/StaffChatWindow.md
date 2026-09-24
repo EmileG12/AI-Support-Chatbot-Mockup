@@ -5,8 +5,8 @@
 ## Purpose
 
 The panel a staff member sees after joining a queued conversation from [QueuePanel](QueuePanel.md):
-an editable AI-drafted ticket summary, the live transcript, a reply box, and a "Create ticket"
-action.
+an editable AI-drafted ticket summary, the live transcript, a reply box, and "Create ticket"/"Issue
+resolved" actions.
 
 ## Props
 
@@ -54,6 +54,22 @@ interface StaffChatWindowProps {
   the current (possibly edited) draft. On success, shows "Ticket #XXXXXXXX created." and disables
   further editing/replying; calls `onTicketCreated` (a no-op in [App](App.md) — there's no ticket
   list on that page to refresh, the confirmation message here is enough).
+- **"Issue resolved"** calls [draftResolution](../frontend-utils/draftResolution.md), which sends
+  the *entire* history (customer, AI, and staff messages) to Claude and gets back a drafted
+  resolution summary — stored in `resolutionDraft: string | null` (`null` while not reviewing one).
+  This replaces the "Create ticket"/"Issue resolved" button row with a review UI: an editable
+  textarea seeded with the draft, plus **"Accept & resolve ticket"** and **"Cancel"**.
+  - **Accept** calls [resolveTicketFromDraft](../frontend-utils/resolveTicketFromDraft.md) with the
+    current ticket `draft` fields and the (possibly staff-edited) resolution text, which hits the
+    same `staff-create-ticket` route as plain "Create ticket" but with `status: "resolved"` and
+    `resolution_notes` set. On success: same "Ticket #XXXXXXXX created and resolved." confirmation
+    state as the normal create path (`createdTicket.status === "resolved"` picks the wording).
+  - **Cancel** just clears `resolutionDraft` back to `null`, returning to the normal draft buttons
+    — nothing is sent to the backend.
+  - Unlike the ticket-summary draft, there's no auto-refresh/approval dance for the resolution text:
+    it's drafted once, on demand, reviewed once, and either accepted or cancelled — there's no
+    ongoing "AI keeps re-drafting this in the background" concern the way there is for the ticket
+    summary while the conversation is still live.
 - "Close" calls `onClose` — [App](App.md) owns actually unmounting this panel (back to
   [QueuePanel](QueuePanel.md)).
 - Messages with `role: "staff"` are labeled "You" in the transcript.
@@ -61,4 +77,4 @@ interface StaffChatWindowProps {
 ## Related
 
 - [docs/components/QueuePanel.md](QueuePanel.md), [docs/components/App.md](App.md), [docs/components/TicketCard.md](TicketCard.md) (`CATEGORY_LABELS`/`PRIORITY_LABELS`)
-- [docs/api-routes/get-conversation-messages.md](../api-routes/get-conversation-messages.md), [docs/api-routes/post-staff-message.md](../api-routes/post-staff-message.md), [docs/api-routes/post-staff-create-ticket.md](../api-routes/post-staff-create-ticket.md)
+- [docs/api-routes/get-conversation-messages.md](../api-routes/get-conversation-messages.md), [docs/api-routes/post-staff-message.md](../api-routes/post-staff-message.md), [docs/api-routes/post-staff-create-ticket.md](../api-routes/post-staff-create-ticket.md), [docs/api-routes/post-draft-resolution.md](../api-routes/post-draft-resolution.md)

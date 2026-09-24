@@ -9,7 +9,7 @@ vi.mock("@anthropic-ai/sdk", () => ({
   }),
 }));
 
-import { runAgentTurn, draftTicketSummary } from "./ticketAgent.js";
+import { runAgentTurn, draftTicketSummary, draftResolutionSummary } from "./ticketAgent.js";
 
 const history: MessageParam[] = [{ role: "user", content: "my broadband is really slow" }];
 
@@ -171,5 +171,45 @@ describe("draftTicketSummary", () => {
 
     expect(result).toBeNull();
     expect(mockCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("draftResolutionSummary", () => {
+  beforeEach(() => {
+    mockCreate.mockReset();
+  });
+
+  it("returns the plain-text resolution summary from a single call, no tools", async () => {
+    mockCreate.mockResolvedValueOnce({
+      content: [
+        {
+          type: "text",
+          text: "Customer's broadband was down due to a line fault; resolved after a router reset confirmed by the customer.",
+        },
+      ],
+    });
+
+    const result = await draftResolutionSummary(history);
+
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(mockCreate.mock.calls[0][0].tools).toBeUndefined();
+    expect(result).toBe(
+      "Customer's broadband was down due to a line fault; resolved after a router reset confirmed by the customer."
+    );
+  });
+
+  it("returns null for an empty history without calling Claude", async () => {
+    const result = await draftResolutionSummary([]);
+
+    expect(result).toBeNull();
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns null when the response has no text content", async () => {
+    mockCreate.mockResolvedValueOnce({ content: [] });
+
+    const result = await draftResolutionSummary(history);
+
+    expect(result).toBeNull();
   });
 });

@@ -247,6 +247,12 @@
   margin: 0 0 8px;
 }
 
+.detail-resolution {
+  font-size: 0.85rem;
+  color: #047857;
+  margin: 0 0 8px;
+}
+
 .transcript {
   display: flex;
   flex-direction: column;

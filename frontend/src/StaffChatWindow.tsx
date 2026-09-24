@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { getConversationMessages, sendStaffMessage, createTicketFromDraft } from "./api";
+import {
+  getConversationMessages,
+  sendStaffMessage,
+  createTicketFromDraft,
+  draftResolution,
+  resolveTicketFromDraft,
+} from "./api";
 import { CATEGORY_LABELS, PRIORITY_LABELS } from "./TicketCard";
 import type { ChatMessage, DraftTicket, Ticket, TicketCategory, TicketPriority } from "./types";
 
@@ -54,6 +60,12 @@ export function StaffChatWindow({
   const [isCreatingTicket, setIsCreatingTicket] = useState(false);
   const [createdTicket, setCreatedTicket] = useState<Ticket | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // null while not reviewing a resolution; the (possibly staff-edited) draft
+  // resolution text once "Issue resolved" has been drafted.
+  const [resolutionDraft, setResolutionDraft] = useState<string | null>(null);
+  const [isDraftingResolution, setIsDraftingResolution] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
 
   const draftRef = useRef(draft);
   useEffect(() => {
@@ -148,6 +160,36 @@ export function StaffChatWindow({
       setError(err instanceof Error ? err.message : "Failed to create the ticket.");
     } finally {
       setIsCreatingTicket(false);
+    }
+  }
+
+  async function handleDraftResolution() {
+    setIsDraftingResolution(true);
+    setError(null);
+    try {
+      const result = await draftResolution(conversationId);
+      setResolutionDraft(result.resolution ?? "");
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Failed to draft resolution notes.");
+    } finally {
+      setIsDraftingResolution(false);
+    }
+  }
+
+  async function handleAcceptResolution() {
+    if (resolutionDraft === null || !resolutionDraft.trim()) return;
+    setIsResolving(true);
+    setError(null);
+    try {
+      const ticket = await resolveTicketFromDraft(conversationId, draft, resolutionDraft.trim());
+      setCreatedTicket(ticket);
+      onTicketCreated(ticket);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Failed to resolve the ticket.");
+    } finally {
+      setIsResolving(false);
     }
   }
 
@@ -253,11 +295,42 @@ export function StaffChatWindow({
         )}
 
         {createdTicket ? (
-          <p className="staff-ticket-created">Ticket #{createdTicket.id.slice(0, 8)} created.</p>
+          <p className="staff-ticket-created">
+            Ticket #{createdTicket.id.slice(0, 8)} created{createdTicket.status === "resolved" ? " and resolved" : ""}.
+          </p>
+        ) : resolutionDraft !== null ? (
+          <div className="resolution-review">
+            <label className="staff-draft-textarea">
+              Resolution summary
+              <textarea
+                value={resolutionDraft}
+                onChange={(e) => setResolutionDraft(e.target.value)}
+                disabled={isResolving}
+                rows={3}
+              />
+            </label>
+            <div className="resolution-review-actions">
+              <button onClick={handleAcceptResolution} disabled={isResolving || !resolutionDraft.trim()}>
+                {isResolving ? "Resolving…" : "Accept & resolve ticket"}
+              </button>
+              <button className="secondary" onClick={() => setResolutionDraft(null)} disabled={isResolving}>
+                Cancel
+              </button>
+            </div>
+          </div>
         ) : (
-          <button onClick={handleCreateTicket} disabled={isCreatingTicket || !draft.summary.trim()}>
-            {isCreatingTicket ? "Creating…" : "Create ticket"}
-          </button>
+          <div className="staff-draft-buttons">
+            <button onClick={handleCreateTicket} disabled={isCreatingTicket || !draft.summary.trim()}>
+              {isCreatingTicket ? "Creating…" : "Create ticket"}
+            </button>
+            <button
+              className="secondary"
+              onClick={handleDraftResolution}
+              disabled={isDraftingResolution || !draft.summary.trim()}
+            >
+              {isDraftingResolution ? "Drafting…" : "Issue resolved"}
+            </button>
+          </div>
         )}
       </div>
 
