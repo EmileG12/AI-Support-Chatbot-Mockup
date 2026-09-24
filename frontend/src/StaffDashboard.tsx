@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { fetchTickets, fetchTicketDetail, updateTicket } from "./api";
-import { CATEGORY_LABELS, PRIORITY_LABELS, TicketCard } from "./TicketCard";
-import type { Ticket, TicketCategory, TicketPriority, TicketStatus, TicketDetail } from "./types";
+import { CATEGORY_LABELS, PRIORITY_LABELS } from "./TicketCard";
+import type { Ticket, TicketCategory, TicketPriority, TicketStatus, TicketDetail, ChatMessage } from "./types";
 import "./StaffDashboard.css";
 
 const STATUS_OPTIONS: (TicketStatus | "all")[] = ["all", "open", "in_progress", "resolved", "closed"];
@@ -11,6 +11,40 @@ const PRIORITY_OPTIONS: (TicketPriority | "all")[] = ["all", ...(Object.keys(PRI
 
 function StatusBadge({ status }: { status: TicketStatus }) {
   return <span className={`status-badge status-${status}`}>{status.replace("_", " ")}</span>;
+}
+
+/** Summary/diagnostics/contact/transcript — shared between the selected ticket's
+ * detail panel and the read-only duplicate panel shown alongside it. */
+function TicketDetailBody({ ticket, messages }: { ticket: Ticket; messages: ChatMessage[] }) {
+  return (
+    <>
+      <p className="detail-summary">{ticket.summary}</p>
+
+      {ticket.troubleshooting_notes && (
+        <p className="detail-troubleshooting">
+          <strong>Diagnostics:</strong> {ticket.troubleshooting_notes}
+        </p>
+      )}
+
+      {(ticket.customer_name || ticket.customer_email || ticket.customer_phone) && (
+        <p className="detail-contact">
+          {ticket.customer_name} — {ticket.customer_email} — {ticket.customer_phone}
+          <br />
+          {ticket.customer_address} — {ticket.customer_postcode} —{" "}
+          {ticket.customer_is_account_holder ? "Account holder" : "Not account holder"}
+        </p>
+      )}
+
+      <h3>Conversation</h3>
+      <div className="transcript">
+        {messages.map((m) => (
+          <div key={m.id} className={`transcript-message transcript-${m.role}`}>
+            {m.content}
+          </div>
+        ))}
+      </div>
+    </>
+  );
 }
 
 export default function StaffDashboard() {
@@ -22,7 +56,7 @@ export default function StaffDashboard() {
   const [detail, setDetail] = useState<TicketDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [duplicateTicket, setDuplicateTicket] = useState<Ticket | null>(null);
+  const [duplicateDetail, setDuplicateDetail] = useState<TicketDetail | null>(null);
   const [isDuplicateLoading, setIsDuplicateLoading] = useState(false);
 
   const loadTickets = useCallback(async () => {
@@ -48,7 +82,7 @@ export default function StaffDashboard() {
   }, [loadTickets]);
 
   useEffect(() => {
-    setDuplicateTicket(null);
+    setDuplicateDetail(null);
     if (!selectedId) {
       setDetail(null);
       return;
@@ -62,14 +96,14 @@ export default function StaffDashboard() {
   }, [selectedId]);
 
   async function handleViewDuplicate(duplicateId: string) {
-    if (duplicateTicket) {
-      setDuplicateTicket(null);
+    if (duplicateDetail) {
+      setDuplicateDetail(null);
       return;
     }
     setIsDuplicateLoading(true);
     try {
       const dupDetail = await fetchTicketDetail(duplicateId);
-      setDuplicateTicket(dupDetail.ticket);
+      setDuplicateDetail(dupDetail);
     } catch (err) {
       console.error(err);
       setError("Failed to load the duplicate ticket.");
@@ -191,119 +225,99 @@ export default function StaffDashboard() {
           </table>
         </div>
 
-        <div className="ticket-detail-panel">
-          {!detail && <p className="empty-detail">Select a ticket to view details.</p>}
-          {detail && (
-            <>
-              <h2>Ticket #{detail.ticket.id.slice(0, 8)}</h2>
+        <div className="detail-area">
+          <div className="ticket-detail-panel">
+            {!detail && <p className="empty-detail">Select a ticket to view details.</p>}
+            {detail && (
+              <>
+                <h2>Ticket #{detail.ticket.id.slice(0, 8)}</h2>
 
-              {detail.duplicateOf && !detail.ticket.duplicate_dismissed && (
-                <div className="duplicate-banner">
-                  <p>
-                    Possibly a duplicate of ticket #{detail.duplicateOf.id.slice(0, 8)} — "
-                    {detail.duplicateOf.summary}"
-                    {typeof detail.ticket.duplicate_similarity === "number" &&
-                      ` (${Math.round(detail.ticket.duplicate_similarity * 100)}% similar)`}
-                  </p>
-                  <div className="duplicate-banner-actions">
-                    <button
-                      onClick={() => handleViewDuplicate(detail.duplicateOf!.id)}
-                      disabled={isDuplicateLoading}
+                {detail.duplicateOf && !detail.ticket.duplicate_dismissed && (
+                  <div className="duplicate-banner">
+                    <p>
+                      Possibly a duplicate of ticket #{detail.duplicateOf.id.slice(0, 8)} — "
+                      {detail.duplicateOf.summary}"
+                      {typeof detail.ticket.duplicate_similarity === "number" &&
+                        ` (${Math.round(detail.ticket.duplicate_similarity * 100)}% similar)`}
+                    </p>
+                    <div className="duplicate-banner-actions">
+                      <button
+                        onClick={() => handleViewDuplicate(detail.duplicateOf!.id)}
+                        disabled={isDuplicateLoading}
+                      >
+                        {duplicateDetail ? "Hide duplicate" : isDuplicateLoading ? "Loading…" : "View duplicate"}
+                      </button>
+                      <button onClick={() => handleUpdate({ status: "closed" })}>Close as duplicate</button>
+                      <button
+                        className="secondary"
+                        onClick={() => handleUpdate({ duplicate_dismissed: true })}
+                      >
+                        Not a duplicate
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="edit-row">
+                  <label>
+                    Category
+                    <select
+                      value={detail.ticket.category}
+                      onChange={(e) => handleUpdate({ category: e.target.value as TicketCategory })}
                     >
-                      {duplicateTicket ? "Hide duplicate" : isDuplicateLoading ? "Loading…" : "View duplicate"}
-                    </button>
-                    <button onClick={() => handleUpdate({ status: "closed" })}>Close as duplicate</button>
-                    <button
-                      className="secondary"
-                      onClick={() => handleUpdate({ duplicate_dismissed: true })}
+                      {(Object.keys(CATEGORY_LABELS) as TicketCategory[]).map((c) => (
+                        <option key={c} value={c}>
+                          {CATEGORY_LABELS[c]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Priority
+                    <select
+                      value={detail.ticket.priority}
+                      onChange={(e) => handleUpdate({ priority: e.target.value as TicketPriority })}
                     >
-                      Not a duplicate
-                    </button>
-                  </div>
+                      {(Object.keys(PRIORITY_LABELS) as TicketPriority[]).map((p) => (
+                        <option key={p} value={p}>
+                          {PRIORITY_LABELS[p]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Status
+                    <select
+                      value={detail.ticket.status}
+                      onChange={(e) => handleUpdate({ status: e.target.value as TicketStatus })}
+                    >
+                      {STATUS_OPTIONS.filter((s) => s !== "all").map((s) => (
+                        <option key={s} value={s}>
+                          {s.replace("_", " ")}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
-              )}
 
-              {duplicateTicket && (
-                <div className="duplicate-compare">
-                  <div className="duplicate-compare-column">
-                    <span className="duplicate-compare-label">This ticket</span>
-                    <TicketCard ticket={detail.ticket} />
-                  </div>
-                  <div className="duplicate-compare-column">
-                    <span className="duplicate-compare-label">Possible duplicate</span>
-                    <TicketCard ticket={duplicateTicket} />
-                  </div>
-                </div>
-              )}
+                <TicketDetailBody ticket={detail.ticket} messages={detail.messages} />
+              </>
+            )}
+          </div>
 
-              <div className="edit-row">
-                <label>
-                  Category
-                  <select
-                    value={detail.ticket.category}
-                    onChange={(e) => handleUpdate({ category: e.target.value as TicketCategory })}
-                  >
-                    {(Object.keys(CATEGORY_LABELS) as TicketCategory[]).map((c) => (
-                      <option key={c} value={c}>
-                        {CATEGORY_LABELS[c]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Priority
-                  <select
-                    value={detail.ticket.priority}
-                    onChange={(e) => handleUpdate({ priority: e.target.value as TicketPriority })}
-                  >
-                    {(Object.keys(PRIORITY_LABELS) as TicketPriority[]).map((p) => (
-                      <option key={p} value={p}>
-                        {PRIORITY_LABELS[p]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Status
-                  <select
-                    value={detail.ticket.status}
-                    onChange={(e) => handleUpdate({ status: e.target.value as TicketStatus })}
-                  >
-                    {STATUS_OPTIONS.filter((s) => s !== "all").map((s) => (
-                      <option key={s} value={s}>
-                        {s.replace("_", " ")}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+          {duplicateDetail && (
+            <div className="ticket-detail-panel duplicate-detail-panel">
+              <h2>Possible duplicate — Ticket #{duplicateDetail.ticket.id.slice(0, 8)}</h2>
+              <div className="badge-row">
+                <span>{CATEGORY_LABELS[duplicateDetail.ticket.category]}</span>
+                <span className={`priority-badge priority-${duplicateDetail.ticket.priority}`}>
+                  {PRIORITY_LABELS[duplicateDetail.ticket.priority]}
+                </span>
+                <StatusBadge status={duplicateDetail.ticket.status} />
               </div>
 
-              <p className="detail-summary">{detail.ticket.summary}</p>
-
-              {detail.ticket.troubleshooting_notes && (
-                <p className="detail-troubleshooting">
-                  <strong>Diagnostics:</strong> {detail.ticket.troubleshooting_notes}
-                </p>
-              )}
-
-              {(detail.ticket.customer_name || detail.ticket.customer_email || detail.ticket.customer_phone) && (
-                <p className="detail-contact">
-                  {detail.ticket.customer_name} — {detail.ticket.customer_email} — {detail.ticket.customer_phone}
-                  <br />
-                  {detail.ticket.customer_address} — {detail.ticket.customer_postcode} —{" "}
-                  {detail.ticket.customer_is_account_holder ? "Account holder" : "Not account holder"}
-                </p>
-              )}
-
-              <h3>Conversation</h3>
-              <div className="transcript">
-                {detail.messages.map((m) => (
-                  <div key={m.id} className={`transcript-message transcript-${m.role}`}>
-                    {m.content}
-                  </div>
-                ))}
-              </div>
-            </>
+              <TicketDetailBody ticket={duplicateDetail.ticket} messages={duplicateDetail.messages} />
+            </div>
           )}
         </div>
       </div>

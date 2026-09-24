@@ -136,7 +136,7 @@ describe("StaffDashboard", () => {
     expect(mockUpdateTicket).toHaveBeenCalledWith("t1", { status: "closed" });
   });
 
-  it("'View duplicate' shows the linked ticket alongside the current one, without navigating away", async () => {
+  it("'View duplicate' shows the linked ticket's full detail alongside the current one, without navigating away", async () => {
     mockFetchTickets.mockResolvedValueOnce([makeTicket({ id: "t1", possible_duplicate_of: "t0" })]);
     mockFetchTicketDetail.mockResolvedValueOnce(
       makeDetail({
@@ -147,7 +147,12 @@ describe("StaffDashboard", () => {
     );
     mockFetchTicketDetail.mockResolvedValueOnce(
       makeDetail({
-        ticket: makeTicket({ id: "99999999-8888-7777-6666-555555555555", summary: "Original outage report" }),
+        ticket: makeTicket({
+          id: "99999999-8888-7777-6666-555555555555",
+          summary: "Original outage report",
+          customer_name: "Jane Doe",
+        }),
+        messages: [{ id: "m0", role: "user", content: "my broadband was already down yesterday" }],
       })
     );
     const user = userEvent.setup();
@@ -161,14 +166,18 @@ describe("StaffDashboard", () => {
     await user.click(within(banner.closest(".duplicate-banner")!).getByRole("button", { name: /view duplicate/i }));
 
     expect(mockFetchTicketDetail).toHaveBeenLastCalledWith("t0");
-    // The duplicate's own compact card renders alongside the current ticket...
-    expect(await screen.findByText("Ticket #99999999")).toBeInTheDocument();
+    // The duplicate's own full detail block - summary, contact, transcript - renders
+    // alongside the current ticket...
+    expect(await screen.findByText("Possible duplicate — Ticket #99999999")).toBeInTheDocument();
+    expect(screen.getByText("Original outage report")).toBeInTheDocument();
+    expect(screen.getByText(/Jane Doe/)).toBeInTheDocument();
+    expect(screen.getByText("my broadband was already down yesterday")).toBeInTheDocument();
     // ...and the current ticket's transcript is still showing - no navigation happened.
     expect(screen.getByText("my broadband is down")).toBeInTheDocument();
 
     // Toggling again hides it.
     await user.click(screen.getByRole("button", { name: /hide duplicate/i }));
-    expect(screen.queryByText("Ticket #99999999")).not.toBeInTheDocument();
+    expect(screen.queryByText("Possible duplicate — Ticket #99999999")).not.toBeInTheDocument();
   });
 
   it("'Not a duplicate' dismisses the warning and the banner disappears", async () => {

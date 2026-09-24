@@ -1,5 +1,5 @@
 .dashboard-shell {
-  max-width: 1100px;
+  max-width: 1400px;
   margin: 0 auto;
   min-height: 100vh;
   padding: 24px 16px;
@@ -22,15 +22,32 @@
 }
 
 .dashboard-body {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  display: flex;
   gap: 16px;
   align-items: start;
+  flex-wrap: wrap;
+}
+
+.ticket-list-panel {
+  flex: 1 1 380px;
+}
+
+.detail-area {
+  display: flex;
+  gap: 16px;
+  flex: 2 1 480px;
+  flex-wrap: wrap;
+}
+
+.detail-area .ticket-detail-panel {
+  flex: 1 1 340px;
+  min-width: 300px;
 }
 
 @media (max-width: 800px) {
-  .dashboard-body {
-    grid-template-columns: 1fr;
+  .dashboard-body,
+  .detail-area {
+    flex-direction: column;
   }
 }
 
@@ -40,6 +57,18 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 16px;
+}
+
+.duplicate-detail-panel {
+  border-color: #fde68a;
+}
+
+.badge-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 
 .filter-bar {
@@ -183,27 +212,6 @@
   font-size: 0.8rem;
 }
 
-.duplicate-compare {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-
-.duplicate-compare-column {
-  flex: 1;
-  min-width: 220px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.duplicate-compare-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-}
 
 .edit-row {
   display: flex;
