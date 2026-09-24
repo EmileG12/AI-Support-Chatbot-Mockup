@@ -40,15 +40,19 @@ them).
   wait estimate), inserting the canned queued-message template **without calling the mocked
   `runAgentTurn` at all** and returning `handoffStatus`/`estimatedWaitMinutes` in the response.
 - `POST /api/chat` gives an empty reply and never calls `runAgentTurn` once the conversation is
-  `"queued"` or `"live"` — the message is just persisted for whichever side polls it next.
+  `"queued"` — the message is just persisted for whichever side polls it next.
+- `POST /api/chat` also gives an empty reply once `"live"`, but *does* call the mocked
+  `draftTicketSummary` once, re-drafting the ticket summary from the full history (see
+  [conversationFlow](../backend-services/conversationFlow.md)'s `updateDraftTicket`).
 - `GET`/`PATCH /api/settings` read/write the `working_hours` flag; `PATCH` rejects a non-boolean
   without touching Supabase.
 - `GET /api/conversations/queue` returns the queued-conversations list as-is.
 - `GET /api/conversations/:id/messages` 404s when the conversation isn't found, otherwise returns
-  `handoffStatus`/`estimatedWaitMinutes`/`messages`.
+  `handoffStatus`/`estimatedWaitMinutes`/`draftTicket`/`messages` (including a `null` `draftTicket`
+  before one's been drafted).
 - `POST /api/conversations/:id/staff-join` 400s unless the conversation is currently `"queued"`;
-  on success marks it `"live"` and returns the (mocked) `draftTicketSummary` result plus the full
-  transcript.
+  on success marks it `"live"`, calls the mocked `draftTicketSummary`, persists the result, and
+  returns it plus the full transcript.
 - `POST /api/conversations/:id/staff-message` rejects a blank message without touching Supabase,
   400s unless the conversation is currently `"live"`, and otherwise inserts and returns the
   `role: "staff"` message.

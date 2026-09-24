@@ -134,15 +134,27 @@ export interface TurnResult {
 export async function runAndPersistTurn(conversationId: string): Promise<TurnResult> {
   const state = await loadConversationState(conversationId);
 
-  // Once queued/live, the AI is out of the loop entirely - the message the
+  // Once queued/live, the AI never replies conversationally - the message the
   // caller already persisted just waits for (or was replied to directly by) a
-  // staff member; see staffJoinConversation/insertStaffMessage.
-  if (state.handoffStatus === "queued" || state.handoffStatus === "live") {
+  // staff member; see staffJoinConversation/insertStaffMessage. While live,
+  // though, a customer message is still worth re-drafting the ticket summary
+  // over - see updateDraftTicket.
+  if (state.handoffStatus === "queued") {
     return {
       reply: "",
       ticket: null,
       pendingContact: null,
-      handoffStatus: state.handoffStatus,
+      handoffStatus: "queued",
+      estimatedWaitMinutes: state.estimatedWaitMinutes,
+    };
+  }
+  if (state.handoffStatus === "live") {
+    await updateDraftTicket(conversationId);
+    return {
+      reply: "",
+      ticket: null,
+      pendingContact: null,
+      handoffStatus: "live",
       estimatedWaitMinutes: state.estimatedWaitMinutes,
     };
   }
@@ -316,9 +328,26 @@ export async function listQueuedConversations(): Promise<QueueEntry[]> {
   return data ?? [];
 }
 
+/**
+ * Re-drafts the ticket summary from the full history and stores it, so a
+ * staff member's polling picks up new details the customer just gave -
+ * called whenever a customer message arrives while the conversation is
+ * live. Never overwrites the stored draft with a `null` result (an empty
+ * history can't happen here, but keeps this safe either way).
+ */
+async function updateDraftTicket(conversationId: string): Promise<CreateTicketArgs | null> {
+  const history = await loadHistory(conversationId);
+  const draftTicket = await draftTicketSummary(history);
+  if (draftTicket) {
+    await supabase.from("conversations").update({ draft_ticket: draftTicket }).eq("id", conversationId);
+  }
+  return draftTicket;
+}
+
 export interface ConversationMessagesResult {
   handoffStatus: HandoffStatus;
   estimatedWaitMinutes: number | null;
+  draftTicket: CreateTicketArgs | null;
   messages: StoredMessage[];
 }
 
@@ -328,7 +357,7 @@ export async function getConversationMessages(
 ): Promise<ConversationMessagesResult | { error: string }> {
   const { data: conversation, error: convError } = await supabase
     .from("conversations")
-    .select("handoff_status, estimated_wait_minutes")
+    .select("handoff_status, estimated_wait_minutes, draft_ticket")
     .eq("id", conversationId)
     .single();
   if (convError || !conversation) return { error: "Conversation not found" };
@@ -343,6 +372,7 @@ export async function getConversationMessages(
   return {
     handoffStatus: (conversation.handoff_status as HandoffStatus) ?? "none",
     estimatedWaitMinutes: conversation.estimated_wait_minutes ?? null,
+    draftTicket: (conversation.draft_ticket as CreateTicketArgs | null) ?? null,
     messages: messages ?? [],
   };
 }
@@ -370,8 +400,7 @@ export async function staffJoinConversation(
     .update({ handoff_status: "live", staff_joined_at: new Date().toISOString() })
     .eq("id", conversationId);
 
-  const history = await loadHistory(conversationId);
-  const draftTicket = await draftTicketSummary(history);
+  const draftTicket = await updateDraftTicket(conversationId);
 
   const result = await getConversationMessages(conversationId);
   if ("error" in result) return result;

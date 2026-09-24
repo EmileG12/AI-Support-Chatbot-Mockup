@@ -5,7 +5,8 @@ Defined in `supabase/migrations/20260923000000_init_chat_tickets.sql`, then alte
 `customer_phone`, `contact_confirmed`), `20260924000000_add_address_and_account_holder.sql`
 (added `customer_address`, `customer_postcode`, `customer_is_account_holder`), and
 `20260924020000_add_working_hours_handoff.sql` (added `handoff_status`,
-`estimated_wait_minutes`, `queued_at`, `staff_joined_at`).
+`estimated_wait_minutes`, `queued_at`, `staff_joined_at`), and
+`20260924030000_add_draft_ticket.sql` (added `draft_ticket`).
 
 ## Purpose
 
@@ -31,7 +32,8 @@ create table conversations (
   handoff_status text not null default 'none' check (handoff_status in ('none', 'queued', 'live')),
   estimated_wait_minutes integer,
   queued_at timestamptz,
-  staff_joined_at timestamptz
+  staff_joined_at timestamptz,
+  draft_ticket jsonb
 );
 ```
 
@@ -56,6 +58,12 @@ RLS enabled, no policies (see [docs/rls-policies/README.md](../rls-policies/READ
   shown to the customer and in the dashboard's queue panel.
 - `queued_at` / `staff_joined_at` — timestamps for those two transitions; used to order the queue
   panel and could support a "time waited" display.
+- `draft_ticket` — the AI's latest drafted `category`/`priority`/`summary`/`raw_message`/
+  `troubleshooting_notes` (a `CreateTicketArgs`), for a staff member to read once live. Set when
+  staff joins, then re-set every time the customer sends a new message while live (the AI re-reads
+  the full transcript each time - see `conversationFlow.updateDraftTicket`). Never set from a
+  staff message. Not a ticket - purely informational until staff calls
+  `POST .../staff-create-ticket`.
 
 ## Related
 

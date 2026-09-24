@@ -16,9 +16,21 @@ No body.
 {
   handoffStatus: "none" | "queued" | "live";
   estimatedWaitMinutes: number | null;
+  draftTicket: {
+    category: TicketCategory;
+    priority: TicketPriority;
+    summary: string;
+    raw_message: string;
+    troubleshooting_notes?: string;
+  } | null;
   messages: { id: string; role: "user" | "assistant" | "staff"; content: string }[];
 }
 ```
+
+`draftTicket` is the AI's latest drafted ticket summary (see
+[conversationFlow](../backend-services/conversationFlow.md)'s `updateDraftTicket`) - `null` until a
+staff member has joined. The customer-facing chat ignores it; the staff chat window uses it to
+detect when the AI has re-drafted since the last poll.
 
 `404` with `{ error: string }` if the conversation isn't found, `500` on other failures.
 

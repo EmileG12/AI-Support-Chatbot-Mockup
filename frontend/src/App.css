@@ -197,6 +197,40 @@ body {
   font-size: 0.85rem;
 }
 
+.ai-draft-suggestion {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+}
+
+.ai-draft-suggestion p {
+  margin: 0 0 8px;
+  color: #1e40af;
+}
+
+.ai-draft-suggestion dl {
+  margin: 0 0 8px;
+}
+
+.ai-draft-suggestion dt {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.ai-draft-suggestion dd {
+  margin: 0;
+}
+
+.ai-draft-suggestion-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .message-list {
   flex: 1;
   min-height: 360px;

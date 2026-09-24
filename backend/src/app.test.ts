@@ -270,9 +270,17 @@ describe("POST /api/chat", () => {
     expect(res.body.ticket).toBeNull();
   });
 
-  it("gives no AI reply once a staff member is live - the message just waits for them", async () => {
+  it("gives no AI reply once a staff member is live, but re-drafts the ticket summary", async () => {
     queueResult({ error: null, data: null }); // user message insert
     queueResult({ data: { contact_confirmed: true, handoff_status: "live" }, error: null }); // conversation state lookup
+    queueResult({ data: [{ role: "user", content: "hello?" }], error: null }); // loadHistory (for re-draft)
+    mockDraftTicketSummary.mockResolvedValueOnce({
+      category: "billing",
+      priority: "low",
+      summary: "Query about a recent invoice.",
+      raw_message: "hello?",
+    });
+    queueResult({ error: null, data: null }); // conversation draft_ticket update
 
     const res = await request(app)
       .post("/api/chat")
@@ -281,6 +289,7 @@ describe("POST /api/chat", () => {
     expect(res.status).toBe(200);
     expect(mockRunAgentTurn).not.toHaveBeenCalled();
     expect(res.body.reply).toBe("");
+    expect(mockDraftTicketSummary).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -446,8 +455,15 @@ describe("GET /api/conversations/:id/messages", () => {
     expect(res.status).toBe(404);
   });
 
-  it("returns the handoff status, wait estimate, and messages", async () => {
-    queueResult({ data: { handoff_status: "live", estimated_wait_minutes: null }, error: null });
+  it("returns the handoff status, wait estimate, draft ticket, and messages", async () => {
+    queueResult({
+      data: {
+        handoff_status: "live",
+        estimated_wait_minutes: null,
+        draft_ticket: { category: "broadband_fault", priority: "high", summary: "Outage.", raw_message: "down" },
+      },
+      error: null,
+    });
     queueResult({ data: [{ id: "m1", role: "staff", content: "Hi, I'm here to help" }], error: null });
 
     const res = await request(app).get("/api/conversations/c1/messages");
@@ -455,7 +471,23 @@ describe("GET /api/conversations/:id/messages", () => {
     expect(res.status).toBe(200);
     expect(res.body.handoffStatus).toBe("live");
     expect(res.body.estimatedWaitMinutes).toBeNull();
+    expect(res.body.draftTicket).toEqual({
+      category: "broadband_fault",
+      priority: "high",
+      summary: "Outage.",
+      raw_message: "down",
+    });
     expect(res.body.messages).toEqual([{ id: "m1", role: "staff", content: "Hi, I'm here to help" }]);
+  });
+
+  it("returns a null draftTicket when none has been drafted yet", async () => {
+    queueResult({ data: { handoff_status: "queued", estimated_wait_minutes: 3 }, error: null });
+    queueResult({ data: [], error: null });
+
+    const res = await request(app).get("/api/conversations/c1/messages");
+
+    expect(res.status).toBe(200);
+    expect(res.body.draftTicket).toBeNull();
   });
 });
 
@@ -478,6 +510,7 @@ describe("POST /api/conversations/:id/staff-join", () => {
       summary: "Broadband outage reported.",
       raw_message: "my broadband is down",
     });
+    queueResult({ error: null, data: null }); // conversation draft_ticket update
     queueResult({ data: { handoff_status: "live", estimated_wait_minutes: 3 }, error: null }); // conv lookup for messages
     queueResult({ data: [{ id: "m1", role: "user", content: "my broadband is down" }], error: null }); // messages
 

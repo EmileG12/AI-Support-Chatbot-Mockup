@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { getConversationMessages, sendStaffMessage, createTicketFromDraft } from "./api";
 import { CATEGORY_LABELS, PRIORITY_LABELS } from "./TicketCard";
 import type { ChatMessage, DraftTicket, Ticket, TicketCategory, TicketPriority } from "./types";
@@ -12,6 +12,18 @@ function blankDraft(messages: ChatMessage[]): DraftTicket {
     summary: "",
     raw_message: messages.find((m) => m.role === "user")?.content ?? "",
   };
+}
+
+function draftsEqual(a: DraftTicket | null, b: DraftTicket | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.category === b.category &&
+    a.priority === b.priority &&
+    a.summary === b.summary &&
+    a.raw_message === b.raw_message &&
+    (a.troubleshooting_notes ?? "") === (b.troubleshooting_notes ?? "")
+  );
 }
 
 interface StaffChatWindowProps {
@@ -31,30 +43,79 @@ export function StaffChatWindow({
 }: StaffChatWindowProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [draft, setDraft] = useState<DraftTicket>(initialDraftTicket ?? blankDraft(initialMessages));
+  // The AI draft `draft` was last synced from - used to tell "staff edited
+  // this field" apart from "the AI's own suggestion moved on".
+  const [appliedAiDraft, setAppliedAiDraft] = useState<DraftTicket | null>(initialDraftTicket);
+  // A newer AI suggestion that arrived while the draft had unsaved manual
+  // edits - held for staff to accept/dismiss rather than applied silently.
+  const [pendingAiDraft, setPendingAiDraft] = useState<DraftTicket | null>(null);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isCreatingTicket, setIsCreatingTicket] = useState(false);
   const [createdTicket, setCreatedTicket] = useState<Ticket | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const draftRef = useRef(draft);
   useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+  const appliedAiDraftRef = useRef(appliedAiDraft);
+  useEffect(() => {
+    appliedAiDraftRef.current = appliedAiDraft;
+  }, [appliedAiDraft]);
+
+  useEffect(() => {
+    if (createdTicket) return;
     let cancelled = false;
 
     async function poll() {
       try {
         const result = await getConversationMessages(conversationId);
-        if (!cancelled) setMessages(result.messages);
+        if (cancelled) return;
+        setMessages(result.messages);
+
+        // The customer's own new messages re-drafted this on the backend
+        // (see conversationFlow.updateDraftTicket). Only act if it actually
+        // changed from the last one we saw.
+        if (result.draftTicket && !draftsEqual(result.draftTicket, appliedAiDraftRef.current)) {
+          if (draftsEqual(draftRef.current, appliedAiDraftRef.current)) {
+            // No manual edits since the last AI draft - safe to apply directly.
+            setDraft(result.draftTicket);
+            setAppliedAiDraft(result.draftTicket);
+            setPendingAiDraft(null);
+          } else {
+            // Staff has edited fields the AI hasn't seen - don't overwrite
+            // them; let staff review and choose.
+            setPendingAiDraft(result.draftTicket);
+          }
+        }
       } catch (err) {
         console.error(err);
       }
     }
 
+    poll();
     const interval = setInterval(poll, POLL_INTERVAL_MS);
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [conversationId]);
+  }, [conversationId, createdTicket]);
+
+  function handleAcceptAiDraft() {
+    if (!pendingAiDraft) return;
+    setDraft(pendingAiDraft);
+    setAppliedAiDraft(pendingAiDraft);
+    setPendingAiDraft(null);
+  }
+
+  function handleDismissAiDraft() {
+    if (!pendingAiDraft) return;
+    // Keep the staff's own edits, but mark this suggestion as seen so it
+    // isn't offered again unchanged next poll.
+    setAppliedAiDraft(pendingAiDraft);
+    setPendingAiDraft(null);
+  }
 
   async function handleSend(e: FormEvent) {
     e.preventDefault();
@@ -149,6 +210,47 @@ export function StaffChatWindow({
             rows={2}
           />
         </label>
+
+        {pendingAiDraft && (
+          <div className="ai-draft-suggestion">
+            <p>
+              The customer said more since you edited this - the AI suggests an update, but won't
+              overwrite your changes without you saying so:
+            </p>
+            <dl>
+              {pendingAiDraft.category !== draft.category && (
+                <>
+                  <dt>Category</dt>
+                  <dd>{CATEGORY_LABELS[pendingAiDraft.category]}</dd>
+                </>
+              )}
+              {pendingAiDraft.priority !== draft.priority && (
+                <>
+                  <dt>Priority</dt>
+                  <dd>{PRIORITY_LABELS[pendingAiDraft.priority]}</dd>
+                </>
+              )}
+              {pendingAiDraft.summary !== draft.summary && (
+                <>
+                  <dt>Summary</dt>
+                  <dd>{pendingAiDraft.summary}</dd>
+                </>
+              )}
+              {(pendingAiDraft.troubleshooting_notes ?? "") !== (draft.troubleshooting_notes ?? "") && (
+                <>
+                  <dt>Diagnostics</dt>
+                  <dd>{pendingAiDraft.troubleshooting_notes || "(cleared)"}</dd>
+                </>
+              )}
+            </dl>
+            <div className="ai-draft-suggestion-actions">
+              <button onClick={handleAcceptAiDraft}>Use AI update</button>
+              <button className="secondary" onClick={handleDismissAiDraft}>
+                Keep my edits
+              </button>
+            </div>
+          </div>
+        )}
 
         {createdTicket ? (
           <p className="staff-ticket-created">Ticket #{createdTicket.id.slice(0, 8)} created.</p>

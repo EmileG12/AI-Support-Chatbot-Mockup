@@ -21,7 +21,7 @@ drafting a ticket summary, and the staff <-> customer messaging that follows.
 - `formatQueuedMessage(waitMinutes)` — the fixed "you're in the queue, estimated wait N minutes" template.
 - `createTicketForConversation(conversationId, ticket)` — inserts a `tickets` row from a `CreateTicketArgs`, copying the conversation's confirmed contact fields, running the duplicate check, and marking the conversation `resolved`. Used by the normal `create_ticket` flow *and* by `POST /api/conversations/:id/staff-create-ticket`.
 - `listQueuedConversations(): Promise<QueueEntry[]>` — conversations with `handoff_status: "queued"`, oldest first, for the dashboard's queue panel.
-- `getConversationMessages(conversationId): Promise<ConversationMessagesResult | { error }>` — `{ handoffStatus, estimatedWaitMinutes, messages }`. Backs the polling both the customer chat and the staff chat window use.
+- `getConversationMessages(conversationId): Promise<ConversationMessagesResult | { error }>` — `{ handoffStatus, estimatedWaitMinutes, draftTicket, messages }`. Backs the polling both the customer chat and the staff chat window use.
 - `staffJoinConversation(conversationId): Promise<StaffJoinResult | { error }>` — staff clicked "Join"; see below.
 - `sendStaffMessage(conversationId, content): Promise<StoredMessage | { error }>` — staff typed a reply while live.
 
@@ -29,10 +29,12 @@ drafting a ticket summary, and the staff <-> customer messaging that follows.
 
 1. Loads `contact_confirmed`, `handoff_status`, and `estimated_wait_minutes` in a single query
    (`loadConversationState`).
-2. **If `handoff_status` is `"queued"` or `"live"`: returns immediately with `reply: ""` and no
-   Claude call at all.** The AI is out of the loop entirely once a customer is queued or a staff
-   member has joined — the message the caller already persisted (via `insertUserMessage` or
-   `sendStaffMessage`) just sits in the transcript for whichever side polls it next.
+2. **If `handoff_status` is `"queued"`: returns immediately with `reply: ""` and no Claude call.**
+   The message the caller already persisted (via `insertUserMessage`) just sits in the transcript
+   until a staff member joins.
+   **If `handoff_status` is `"live"`: still no conversational Claude call** (the AI never replies
+   directly to the customer again), **but it does call `updateDraftTicket`** — see below — so a new
+   customer message keeps the staff member's drafted ticket summary current.
 3. **If contact was just confirmed (`contact_confirmed: true`, `handoff_status: "none"`) and
    [working hours are on](settings.md):** generates a random `1`–`5` minute wait, updates the
    conversation to `handoff_status: "queued"` with that estimate and `queued_at`, inserts the
@@ -73,15 +75,34 @@ than another canned message) instead of asking "what can I help with" as if noth
 
 1. 400s (`{ error }`) unless `handoff_status` is currently `"queued"`.
 2. Sets `handoff_status: "live"` and `staff_joined_at`.
-3. Loads history and calls `draftTicketSummary` (see [ticketAgent](ticketAgent.md)) to produce a
-   draft category/priority/summary/troubleshooting_notes for the staff member to read - purely
-   informational, nothing is persisted as a ticket yet.
+3. Calls `updateDraftTicket` (below) to produce the initial draft.
 4. Returns `{ draftTicket, messages }` via `getConversationMessages`.
 
 Staff can then message back and forth with the customer via `sendStaffMessage` (400s unless
 `handoff_status` is `"live"`) and both sides poll `getConversationMessages`, until staff calls
 `POST /api/conversations/:id/staff-create-ticket`, which reuses `createTicketForConversation`
 directly with the (possibly edited) draft.
+
+## `updateDraftTicket` (module-private)
+
+Loads the full history and calls `draftTicketSummary` (see [ticketAgent](ticketAgent.md)) to
+produce a category/priority/summary/troubleshooting_notes for the staff member to read - purely
+informational, nothing is persisted as a `tickets` row until staff calls `staff-create-ticket`. If
+a draft comes back, stores it on `conversations.draft_ticket`; a `null` result (only possible with
+an empty history, which can't happen here) leaves the previous draft in place rather than clearing
+it.
+
+Called from two places: `staffJoinConversation` (the first draft) and `runAndPersistTurn`'s `"live"`
+branch (every time the customer sends a new message afterward - see above). **Never** called for a
+staff message, since staff already knows what they typed; only new *customer* input is worth
+re-drafting over. This means every customer message while live costs one extra Claude call beyond
+the (nonexistent) conversational reply - accepted as the cost of keeping the draft current.
+
+The frontend ([StaffChatWindow](../components/StaffChatWindow.md)) is responsible for not letting
+an updated draft silently overwrite a staff member's own manual edits to the fields - the backend
+always just stores and returns the AI's latest opinion; the approve/dismiss decision is a
+client-side concern since only the client knows whether the currently-displayed fields still match
+what the AI last suggested.
 
 ## `loadHistory` and the `staff` role
 
@@ -97,5 +118,6 @@ role is preserved as-is everywhere messages are read back for display (`getConve
 - [docs/backend-services/contactValidation.md](contactValidation.md)
 - [docs/backend-services/duplicates.md](duplicates.md)
 - [docs/backend-services/settings.md](settings.md) — the `working_hours` flag this module checks.
-- [docs/db-schema/conversations.md](../db-schema/conversations.md) — `handoff_status`/`estimated_wait_minutes`/`queued_at`/`staff_joined_at`.
+- [docs/db-schema/conversations.md](../db-schema/conversations.md) — `handoff_status`/`estimated_wait_minutes`/`queued_at`/`staff_joined_at`/`draft_ticket`.
+- [docs/components/StaffChatWindow.md](../components/StaffChatWindow.md) — where the draft-approval decision actually happens.
 - [docs/api-routes/README.md](../api-routes/README.md) — all routes that use this module.

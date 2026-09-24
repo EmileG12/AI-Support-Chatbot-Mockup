@@ -96,6 +96,7 @@ export interface DraftTicket {
 export interface ConversationMessagesResponse {
   handoffStatus: HandoffStatus;
   estimatedWaitMinutes: number | null;
+  draftTicket: DraftTicket | null;
   messages: ChatMessage[];
 }
 

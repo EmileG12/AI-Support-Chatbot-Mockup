@@ -25,10 +25,28 @@ interface StaffChatWindowProps {
 - Seeds `draft: DraftTicket` from `initialDraftTicket`, or a blank one (`category: "other"`,
   `priority: "medium"`, `raw_message` taken from the first `user` message) if the AI didn't manage
   to draft one. Category/priority `<select>`s and summary/troubleshooting-notes `<textarea>`s are
-  all editable before creating the ticket.
-- Polls [getConversationMessages](../frontend-utils/getConversationMessages.md) every 2.5s and
-  replaces `messages` with the result — the authoritative server copy, so it naturally picks up
-  anything the customer sends.
+  all editable before creating the ticket. Also tracks `appliedAiDraft: DraftTicket | null`
+  (seeded from `initialDraftTicket`) - the AI draft `draft` currently matches, used to tell "staff
+  edited this" apart from "the AI's own suggestion moved on" - and `pendingAiDraft: DraftTicket |
+  null`, a newer suggestion held back from applying.
+- Polls [getConversationMessages](../frontend-utils/getConversationMessages.md) every 2.5s
+  (immediately on mount, too) and replaces `messages` with the result — the authoritative server
+  copy, so it naturally picks up anything the customer or a staff message on another tab sends.
+  Stops polling once a ticket has been created.
+- **Draft reconciliation** on each poll, when the polled `draftTicket` differs from
+  `appliedAiDraft` (a genuinely new AI suggestion, field-by-field compared via `draftsEqual`):
+  - If `draft` still equals `appliedAiDraft` (staff hasn't touched any field since the last AI
+    draft): applies the new draft directly — `draft` and `appliedAiDraft` both become the new
+    value. No prompt; nothing to lose.
+  - Otherwise (staff has edited at least one field): the new suggestion is held in `pendingAiDraft`
+    rather than applied, and an "AI suggests an update" card appears listing which fields would
+    change, with **"Use AI update"** (applies `pendingAiDraft`, updates `appliedAiDraft`) and
+    **"Keep my edits"** (dismisses it, but still advances `appliedAiDraft` to the new value so the
+    same unchanged suggestion isn't re-offered on the next poll — the staff's edits are left alone
+    either way). This is the whole point: an in-flight AI re-draft can never silently overwrite a
+    manual correction.
+  - `draft`/`appliedAiDraft` are read via refs inside the poll closure (not effect dependencies) so
+    typing into the form doesn't restart the polling interval.
 - Sending a reply calls [sendStaffMessage](../frontend-utils/sendStaffMessage.md) and appends the
   returned message directly (no need to wait for the next poll, since the backend call already
   returns the persisted row with its real id).

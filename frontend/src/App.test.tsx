@@ -232,6 +232,7 @@ describe("App", () => {
     mockGetConversationMessages.mockResolvedValue({
       handoffStatus: "queued",
       estimatedWaitMinutes: 3,
+      draftTicket: null,
       messages: [{ id: "m1", role: "assistant", content: "Thanks! You're in the queue (estimated wait: 3 minutes)." }],
     });
     const user = userEvent.setup();
@@ -259,6 +260,7 @@ describe("App", () => {
     mockGetConversationMessages.mockResolvedValue({
       handoffStatus: "live",
       estimatedWaitMinutes: null,
+      draftTicket: null,
       messages: [
         { id: "m1", role: "user", content: "still there?" },
         { id: "m2", role: "staff", content: "Yes, I'm here now!" },
