@@ -15,4 +15,4 @@ non-OK response. See [docs/api-routes/patch-api-settings.md](../api-routes/patch
 
 ## Used by
 
-[docs/components/StaffDashboard.md](../components/StaffDashboard.md) — the "Working hours" toggle.
+[docs/components/App.md](../components/App.md) — the "Working hours" toggle.

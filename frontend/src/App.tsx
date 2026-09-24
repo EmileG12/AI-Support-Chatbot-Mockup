@@ -1,13 +1,36 @@
 import { useState, useRef, useEffect, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { sendChatMessage, confirmContact, submitContact, getConversationMessages } from "./api";
+import {
+  sendChatMessage,
+  confirmContact,
+  submitContact,
+  getConversationMessages,
+  getSettings,
+  updateSettings,
+} from "./api";
 import { TicketCard } from "./TicketCard";
 import { ContactConfirmCard } from "./ContactConfirmCard";
 import { ContactForm } from "./ContactForm";
-import type { ChatMessage, ContactActionResponse, ContactDetails, HandoffStatus, Ticket } from "./types";
+import { QueuePanel } from "./QueuePanel";
+import { StaffChatWindow } from "./StaffChatWindow";
+import type {
+  ChatMessage,
+  ContactActionResponse,
+  ContactDetails,
+  DraftTicket,
+  HandoffStatus,
+  StaffJoinResponse,
+  Ticket,
+} from "./types";
 import "./App.css";
 
 const POLL_INTERVAL_MS = 2500;
+
+interface LiveConversation {
+  id: string;
+  draftTicket: DraftTicket | null;
+  messages: ChatMessage[];
+}
 
 function makeId() {
   return crypto.randomUUID();
@@ -36,7 +59,33 @@ function App() {
   const [handoffStatus, setHandoffStatus] = useState<HandoffStatus>("none");
   const [estimatedWaitMinutes, setEstimatedWaitMinutes] = useState<number | null>(null);
 
+  // Staff-side state, shown alongside the customer chat below so the whole
+  // working-hours handoff can be presented on one page.
+  const [workingHours, setWorkingHoursState] = useState(false);
+  const [liveConversation, setLiveConversation] = useState<LiveConversation | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    getSettings()
+      .then((settings) => setWorkingHoursState(settings.workingHours))
+      .catch((err) => console.error(err));
+  }, []);
+
+  async function handleToggleWorkingHours() {
+    const next = !workingHours;
+    setWorkingHoursState(next);
+    try {
+      await updateSettings({ workingHours: next });
+    } catch (err) {
+      console.error(err);
+      setWorkingHoursState(!next);
+    }
+  }
+
+  function handleJoined(conversationId: string, result: StaffJoinResponse) {
+    setLiveConversation({ id: conversationId, draftTicket: result.draftTicket, messages: result.messages });
+  }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -163,84 +212,107 @@ function App() {
       <header className="app-header">
         <h1>Fenmoor Telecom Support</h1>
         <p>Chat with us and we'll log a ticket for the right team.</p>
+        <label className="working-hours-toggle">
+          <input type="checkbox" checked={workingHours} onChange={handleToggleWorkingHours} />
+          Working hours
+        </label>
         <Link className="nav-link" to="/staff">
           Staff view →
         </Link>
       </header>
 
-      <main className="chat-panel">
-        <div className="message-list">
-          {messages.map((m) => (
-            <div key={m.id} className={`message message-${m.role}`}>
-              {m.role === "staff" && <span className="message-author">Support agent</span>}
-              {m.content}
+      <div className="app-body">
+        <main className="chat-panel">
+          <div className="message-list">
+            {messages.map((m) => (
+              <div key={m.id} className={`message message-${m.role}`}>
+                {m.role === "staff" && <span className="message-author">Support agent</span>}
+                {m.content}
+              </div>
+            ))}
+            {isSending && (
+              <div className="message message-assistant message-pending">Typing…</div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {handoffStatus === "queued" && (
+            <div className="handoff-banner">
+              Waiting for a team member — estimated wait: {estimatedWaitMinutes ?? "a few"}{" "}
+              minute{estimatedWaitMinutes === 1 ? "" : "s"}.
             </div>
-          ))}
-          {isSending && (
-            <div className="message message-assistant message-pending">Typing…</div>
           )}
-          <div ref={messagesEndRef} />
-        </div>
+          {handoffStatus === "live" && (
+            <div className="handoff-banner handoff-live">You're now chatting with a team member.</div>
+          )}
 
-        {handoffStatus === "queued" && (
-          <div className="handoff-banner">
-            Waiting for a team member — estimated wait: {estimatedWaitMinutes ?? "a few"}{" "}
-            minute{estimatedWaitMinutes === 1 ? "" : "s"}.
-          </div>
-        )}
-        {handoffStatus === "live" && (
-          <div className="handoff-banner handoff-live">You're now chatting with a team member.</div>
-        )}
+          {ticket && (
+            <div className="ticket-panel">
+              <TicketCard ticket={ticket} />
+            </div>
+          )}
 
-        {ticket && (
-          <div className="ticket-panel">
-            <TicketCard ticket={ticket} />
-          </div>
-        )}
+          {error && <div className="error-banner">{error}</div>}
 
-        {error && <div className="error-banner">{error}</div>}
+          {awaitingContact && pendingContact && !isEditingContact && (
+            <div className="contact-panel">
+              <ContactConfirmCard
+                contact={pendingContact}
+                onConfirm={handleConfirmContact}
+                onEdit={() => setIsEditingContact(true)}
+                isSubmitting={isContactSubmitting}
+              />
+            </div>
+          )}
 
-        {awaitingContact && pendingContact && !isEditingContact && (
-          <div className="contact-panel">
-            <ContactConfirmCard
-              contact={pendingContact}
-              onConfirm={handleConfirmContact}
-              onEdit={() => setIsEditingContact(true)}
-              isSubmitting={isContactSubmitting}
-            />
-          </div>
-        )}
+          {awaitingContact && pendingContact && isEditingContact && (
+            <div className="contact-panel">
+              <ContactForm
+                initial={pendingContact}
+                onSubmit={handleSubmitContactForm}
+                onCancel={() => {
+                  setIsEditingContact(false);
+                  setContactError(null);
+                }}
+                isSubmitting={isContactSubmitting}
+                error={contactError}
+              />
+            </div>
+          )}
 
-        {awaitingContact && pendingContact && isEditingContact && (
-          <div className="contact-panel">
-            <ContactForm
-              initial={pendingContact}
-              onSubmit={handleSubmitContactForm}
-              onCancel={() => {
-                setIsEditingContact(false);
-                setContactError(null);
+          {!awaitingContact && (
+            <form className="chat-input-row" onSubmit={handleSubmit}>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Describe the issue you're having…"
+                disabled={isSending}
+              />
+              <button type="submit" disabled={isSending || !input.trim()}>
+                Send
+              </button>
+            </form>
+          )}
+        </main>
+
+        <div className="staff-panel">
+          {liveConversation ? (
+            <StaffChatWindow
+              conversationId={liveConversation.id}
+              initialDraftTicket={liveConversation.draftTicket}
+              initialMessages={liveConversation.messages}
+              onClose={() => setLiveConversation(null)}
+              onTicketCreated={() => {
+                // The panel shows its own "Ticket #... created." confirmation
+                // and "Close" button - nothing more to do here.
               }}
-              isSubmitting={isContactSubmitting}
-              error={contactError}
             />
-          </div>
-        )}
-
-        {!awaitingContact && (
-          <form className="chat-input-row" onSubmit={handleSubmit}>
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Describe the issue you're having…"
-              disabled={isSending}
-            />
-            <button type="submit" disabled={isSending || !input.trim()}>
-              Send
-            </button>
-          </form>
-        )}
-      </main>
+          ) : (
+            <QueuePanel onJoined={handleJoined} />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

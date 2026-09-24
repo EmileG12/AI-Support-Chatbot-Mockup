@@ -16,4 +16,4 @@ function staffJoin(conversationId: string): Promise<StaffJoinResponse>
 
 ## Used by
 
-[docs/components/QueuePanel.md](../components/QueuePanel.md) — "Join" button; the result is handed up to [StaffDashboard](../components/StaffDashboard.md) to open the [StaffChatWindow](../components/StaffChatWindow.md).
+[docs/components/QueuePanel.md](../components/QueuePanel.md) — "Join" button; the result is handed up to [App](../components/App.md) to open the [StaffChatWindow](../components/StaffChatWindow.md).

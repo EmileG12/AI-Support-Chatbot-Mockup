@@ -10,14 +10,33 @@ vi.mock("./api", () => ({
   confirmContact: vi.fn(),
   submitContact: vi.fn(),
   getConversationMessages: vi.fn(),
+  getSettings: vi.fn(),
+  updateSettings: vi.fn(),
+  getQueue: vi.fn(),
+  staffJoin: vi.fn(),
+  sendStaffMessage: vi.fn(),
+  createTicketFromDraft: vi.fn(),
 }));
 
-import { sendChatMessage, confirmContact, submitContact, getConversationMessages } from "./api";
+import {
+  sendChatMessage,
+  confirmContact,
+  submitContact,
+  getConversationMessages,
+  getSettings,
+  updateSettings,
+  getQueue,
+  staffJoin,
+} from "./api";
 
 const mockSendChatMessage = vi.mocked(sendChatMessage);
 const mockConfirmContact = vi.mocked(confirmContact);
 const mockSubmitContact = vi.mocked(submitContact);
 const mockGetConversationMessages = vi.mocked(getConversationMessages);
+const mockGetSettings = vi.mocked(getSettings);
+const mockUpdateSettings = vi.mocked(updateSettings);
+const mockGetQueue = vi.mocked(getQueue);
+const mockStaffJoin = vi.mocked(staffJoin);
 
 const CONTACT = {
   name: "Jane Doe",
@@ -46,6 +65,10 @@ beforeEach(() => {
   mockConfirmContact.mockReset();
   mockSubmitContact.mockReset();
   mockGetConversationMessages.mockReset();
+  mockGetSettings.mockReset().mockResolvedValue({ workingHours: false });
+  mockUpdateSettings.mockReset().mockImplementation((s) => Promise.resolve(s));
+  mockGetQueue.mockReset().mockResolvedValue([]);
+  mockStaffJoin.mockReset();
 });
 
 describe("App", () => {
@@ -249,5 +272,44 @@ describe("App", () => {
     expect(await screen.findByText(/you're now chatting with a team member/i)).toBeInTheDocument();
     expect(await screen.findByText("Yes, I'm here now!")).toBeInTheDocument();
     expect(screen.getByText("Support agent")).toBeInTheDocument();
+  });
+
+  it("toggling 'Working hours' calls updateSettings", async () => {
+    mockGetSettings.mockResolvedValueOnce({ workingHours: false });
+    const user = userEvent.setup();
+    renderApp();
+
+    const toggle = await screen.findByLabelText("Working hours");
+    expect(toggle).not.toBeChecked();
+
+    await user.click(toggle);
+
+    expect(mockUpdateSettings).toHaveBeenCalledWith({ workingHours: true });
+    expect(toggle).toBeChecked();
+  });
+
+  it("joining a queued conversation from the staff panel opens the live staff chat window, next to the customer's own chat", async () => {
+    mockGetQueue.mockResolvedValueOnce([
+      { id: "c1", customer_name: "Jane Doe", queued_at: "2026-01-01T00:00:00Z", estimated_wait_minutes: 3 },
+    ]);
+    mockStaffJoin.mockResolvedValueOnce({
+      draftTicket: {
+        category: "broadband_fault",
+        priority: "high",
+        summary: "Broadband outage reported.",
+        raw_message: "my broadband is down",
+      },
+      messages: [{ id: "m1", role: "user", content: "my broadband is down" }],
+    });
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: /join/i }));
+
+    expect(mockStaffJoin).toHaveBeenCalledWith("c1");
+    expect(await screen.findByText("Live chat")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Broadband outage reported.")).toBeInTheDocument();
+    // Still on the same page as the customer's own chat input - side by side, not a separate view.
+    expect(screen.getByPlaceholderText(/describe the issue/i)).toBeInTheDocument();
   });
 });

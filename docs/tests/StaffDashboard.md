@@ -3,11 +3,7 @@
 `frontend/src/StaffDashboard.test.tsx` — suite: `frontend-unit` (`cd frontend && npm run test`)
 
 Tests [StaffDashboard](../components/StaffDashboard.md). Mocks the `frontend/src/api.ts` boundary
-(`fetchTickets`, `fetchTicketDetail`, `updateTicket`, `getSettings`, `updateSettings`, `getQueue`,
-`staffJoin`, `sendStaffMessage`, `createTicketFromDraft`, `getConversationMessages`) — no real
-network calls. [QueuePanel](../components/QueuePanel.md) and
-[StaffChatWindow](../components/StaffChatWindow.md) are rendered for real (not mocked out), so
-their own API calls need mocking here too.
+(`fetchTickets`, `fetchTicketDetail`, `updateTicket`) — no real network calls.
 
 ## Covers
 
@@ -27,9 +23,6 @@ their own API calls need mocking here too.
   button again removes the panel.
 - "Not a duplicate" calls `updateTicket(id, { duplicate_dismissed: true })`, and the banner
   disappears once the (mocked) update resolves.
-- Toggling the "Working hours" checkbox calls `updateSettings({ workingHours: true })`.
-- Clicking "Join" on a [QueuePanel](../components/QueuePanel.md) entry calls `staffJoin` and opens
-  [StaffChatWindow](../components/StaffChatWindow.md) with the returned draft summary.
 
 Rendered inside a `MemoryRouter` (the component renders a `Link` back to `/`). The three filter
 `<select>`s have `aria-label`s (`"Filter by status"` etc.) added specifically so both tests and

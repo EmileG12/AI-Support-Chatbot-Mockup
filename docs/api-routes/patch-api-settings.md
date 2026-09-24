@@ -2,7 +2,7 @@
 
 `backend/src/app.ts`, delegating to [settings.setWorkingHours](../backend-services/settings.md)
 
-Toggled from the [StaffDashboard](../components/StaffDashboard.md) header.
+Toggled from the [App](../components/App.md) header, on the customer chat page.
 
 ## Request
 

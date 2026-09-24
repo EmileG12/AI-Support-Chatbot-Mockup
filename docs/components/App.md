@@ -54,8 +54,25 @@ added optimistically during the normal send flow, so a merge-by-id would render 
 twice under two different ids. A full replace with the authoritative server transcript sidesteps
 that entirely (the visible content is identical either way, only the id changes).
 
+## Staff-side panel
+
+The header also has a "Working hours" checkbox (`getSettings` on mount, `updateSettings` on
+toggle — see [settings](../backend-services/settings.md)); optimistically flips local state and
+rolls back if the request fails.
+
+Below the header, `.app-body` renders `.chat-panel` (the customer chat above) and `.staff-panel`
+**side by side** — deliberately on this same page rather than on [StaffDashboard](StaffDashboard.md),
+so a single browser tab can demo both sides of the working-hours handoff at once:
+
+- By default, `.staff-panel` renders [QueuePanel](QueuePanel.md). Its `onJoined` callback stores
+  `{ id, draftTicket, messages }` in `liveConversation` state.
+- Once `liveConversation` is set, `.staff-panel` instead renders [StaffChatWindow](StaffChatWindow.md)
+  for that conversation. `onClose` clears `liveConversation` back to the queue view;
+  `onTicketCreated` is a no-op here since the panel already shows its own "Ticket #... created."
+  confirmation and "Close" button — there's no ticket list on this page to refresh.
+
 ## Related
 
-- [docs/components/TicketCard.md](TicketCard.md), [docs/components/ContactConfirmCard.md](ContactConfirmCard.md), [docs/components/ContactForm.md](ContactForm.md)
+- [docs/components/TicketCard.md](TicketCard.md), [docs/components/ContactConfirmCard.md](ContactConfirmCard.md), [docs/components/ContactForm.md](ContactForm.md), [docs/components/QueuePanel.md](QueuePanel.md), [docs/components/StaffChatWindow.md](StaffChatWindow.md), [docs/components/StaffDashboard.md](StaffDashboard.md)
 - [docs/frontend-utils/README.md](../frontend-utils/README.md)
-- [docs/api-routes/post-api-chat.md](../api-routes/post-api-chat.md), [docs/api-routes/post-confirm-contact.md](../api-routes/post-confirm-contact.md), [docs/api-routes/patch-conversation-contact.md](../api-routes/patch-conversation-contact.md), [docs/api-routes/get-conversation-messages.md](../api-routes/get-conversation-messages.md)
+- [docs/api-routes/post-api-chat.md](../api-routes/post-api-chat.md), [docs/api-routes/post-confirm-contact.md](../api-routes/post-confirm-contact.md), [docs/api-routes/patch-conversation-contact.md](../api-routes/patch-conversation-contact.md), [docs/api-routes/get-conversation-messages.md](../api-routes/get-conversation-messages.md), [docs/api-routes/README.md](../api-routes/README.md) (settings/queue/staff-\* routes)

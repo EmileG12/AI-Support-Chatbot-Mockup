@@ -10,24 +10,13 @@ vi.mock("./api", () => ({
   fetchTickets: vi.fn(),
   fetchTicketDetail: vi.fn(),
   updateTicket: vi.fn(),
-  getSettings: vi.fn(),
-  updateSettings: vi.fn(),
-  getQueue: vi.fn(),
-  staffJoin: vi.fn(),
-  sendStaffMessage: vi.fn(),
-  createTicketFromDraft: vi.fn(),
-  getConversationMessages: vi.fn(),
 }));
 
-import { fetchTickets, fetchTicketDetail, updateTicket, getSettings, updateSettings, getQueue, staffJoin } from "./api";
+import { fetchTickets, fetchTicketDetail, updateTicket } from "./api";
 
 const mockFetchTickets = vi.mocked(fetchTickets);
 const mockFetchTicketDetail = vi.mocked(fetchTicketDetail);
 const mockUpdateTicket = vi.mocked(updateTicket);
-const mockGetSettings = vi.mocked(getSettings);
-const mockUpdateSettings = vi.mocked(updateSettings);
-const mockGetQueue = vi.mocked(getQueue);
-const mockStaffJoin = vi.mocked(staffJoin);
 
 function renderDashboard() {
   return render(
@@ -56,10 +45,6 @@ beforeEach(() => {
   mockFetchTickets.mockReset();
   mockFetchTicketDetail.mockReset();
   mockUpdateTicket.mockReset();
-  mockGetSettings.mockReset().mockResolvedValue({ workingHours: false });
-  mockUpdateSettings.mockReset().mockImplementation((s) => Promise.resolve(s));
-  mockGetQueue.mockReset().mockResolvedValue([]);
-  mockStaffJoin.mockReset();
 });
 
 describe("StaffDashboard", () => {
@@ -217,44 +202,5 @@ describe("StaffDashboard", () => {
 
     expect(mockUpdateTicket).toHaveBeenCalledWith("t1", { duplicate_dismissed: true });
     await waitFor(() => expect(screen.queryByText(/Possibly a duplicate of ticket/)).not.toBeInTheDocument());
-  });
-
-  it("toggling 'Working hours' calls updateSettings", async () => {
-    mockFetchTickets.mockResolvedValueOnce([]);
-    mockGetSettings.mockResolvedValueOnce({ workingHours: false });
-    const user = userEvent.setup();
-    renderDashboard();
-
-    const toggle = await screen.findByLabelText("Working hours");
-    expect(toggle).not.toBeChecked();
-
-    await user.click(toggle);
-
-    expect(mockUpdateSettings).toHaveBeenCalledWith({ workingHours: true });
-    expect(toggle).toBeChecked();
-  });
-
-  it("joining a queued conversation opens the live staff chat window", async () => {
-    mockFetchTickets.mockResolvedValueOnce([]);
-    mockGetQueue.mockResolvedValueOnce([
-      { id: "c1", customer_name: "Jane Doe", queued_at: "2026-01-01T00:00:00Z", estimated_wait_minutes: 3 },
-    ]);
-    mockStaffJoin.mockResolvedValueOnce({
-      draftTicket: {
-        category: "broadband_fault",
-        priority: "high",
-        summary: "Broadband outage reported.",
-        raw_message: "my broadband is down",
-      },
-      messages: [{ id: "m1", role: "user", content: "my broadband is down" }],
-    });
-    const user = userEvent.setup();
-    renderDashboard();
-
-    await user.click(await screen.findByRole("button", { name: /join/i }));
-
-    expect(mockStaffJoin).toHaveBeenCalledWith("c1");
-    expect(await screen.findByText("Live chat")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Broadband outage reported.")).toBeInTheDocument();
   });
 });

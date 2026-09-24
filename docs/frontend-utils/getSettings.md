@@ -15,4 +15,4 @@ function getSettings(): Promise<Settings>
 
 ## Used by
 
-[docs/components/StaffDashboard.md](../components/StaffDashboard.md) — loads the current toggle state on mount.
+[docs/components/App.md](../components/App.md) — loads the current toggle state on mount.

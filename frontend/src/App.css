@@ -10,7 +10,7 @@ body {
 }
 
 .app-shell {
-  max-width: 640px;
+  max-width: 1200px;
   margin: 0 auto;
   min-height: 100vh;
   display: flex;
@@ -18,9 +18,17 @@ body {
   padding: 24px 16px;
 }
 
+.app-header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
 .app-header h1 {
   margin: 0;
   font-size: 1.5rem;
+  flex-basis: 100%;
 }
 
 .app-header p {
@@ -41,8 +49,22 @@ body {
   text-decoration: underline;
 }
 
-.chat-panel {
+.app-body {
   flex: 1;
+  display: flex;
+  gap: 16px;
+  align-items: start;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 800px) {
+  .app-body {
+    flex-direction: column;
+  }
+}
+
+.chat-panel {
+  flex: 1 1 420px;
   display: flex;
   flex-direction: column;
   background: var(--panel);
@@ -50,6 +72,129 @@ body {
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Staff-side panel (working-hours queue + live chat), shown next to the
+   customer's own chat so both sides of the handoff can be presented
+   side by side on this one page instead of needing a second tab. */
+.staff-panel {
+  flex: 1 1 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+.working-hours-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.queue-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.queue-panel h2 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.queue-empty {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.queue-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.queue-entry-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.queue-entry-name {
+  font-weight: 600;
+}
+
+.queue-entry-wait {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.staff-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.staff-chat-header h2 {
+  margin: 0;
+}
+
+.staff-draft-card {
+  background: #faf9ff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.staff-draft-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.staff-draft-textarea {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  gap: 4px;
+}
+
+.staff-draft-textarea textarea {
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  resize: vertical;
+}
+
+.staff-ticket-created {
+  margin: 0;
+  color: #047857;
+  font-weight: 600;
+  font-size: 0.85rem;
 }
 
 .message-list {

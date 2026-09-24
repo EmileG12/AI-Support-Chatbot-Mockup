@@ -3,7 +3,11 @@
 `frontend/src/App.test.tsx` — suite: `frontend-unit` (`cd frontend && npm run test`)
 
 Tests [App](../components/App.md). Mocks the `frontend/src/api.ts` boundary (`sendChatMessage`,
-`confirmContact`, `submitContact`, `getConversationMessages`) — no real network calls.
+`confirmContact`, `submitContact`, `getConversationMessages`, `getSettings`, `updateSettings`,
+`getQueue`, `staffJoin`, `sendStaffMessage`, `createTicketFromDraft`) — no real network calls.
+[QueuePanel](../components/QueuePanel.md) and [StaffChatWindow](../components/StaffChatWindow.md)
+are rendered for real (not mocked out) as part of `App`'s staff-side panel, so their own API calls
+need mocking here too.
 
 ## Covers
 
@@ -19,5 +23,10 @@ Tests [App](../components/App.md). Mocks the `frontend/src/api.ts` boundary (`se
   contain the same "estimated wait" phrase), and the chat input stays available.
 - When `handoffStatus` is `"live"`, the live banner shows and the (mocked) immediate poll from
   `getConversationMessages` renders a `role: "staff"` reply labeled "Support agent".
+- Toggling the "Working hours" checkbox calls `updateSettings({ workingHours: true })`.
+- Clicking "Join" on a [QueuePanel](../components/QueuePanel.md) entry (rendered in the staff-side
+  panel next to the customer's own chat) calls `staffJoin` and opens
+  [StaffChatWindow](../components/StaffChatWindow.md) with the returned draft summary, with the
+  customer's own chat input still on screen alongside it.
 
 Rendered inside a `MemoryRouter` since `App` renders a `react-router-dom` `Link` to `/staff`.

@@ -33,13 +33,14 @@ interface StaffChatWindowProps {
   returned message directly (no need to wait for the next poll, since the backend call already
   returns the persisted row with its real id).
 - "Create ticket" calls [createTicketFromDraft](../frontend-utils/createTicketFromDraft.md) with
-  the current (possibly edited) draft. On success, shows "Ticket #XXXXXXXX created.", disables
-  further editing/replying, and calls `onTicketCreated` so
-  [StaffDashboard](StaffDashboard.md) can refresh the ticket list.
-- "Close" calls `onClose` — [StaffDashboard](StaffDashboard.md) owns actually unmounting this panel.
+  the current (possibly edited) draft. On success, shows "Ticket #XXXXXXXX created." and disables
+  further editing/replying; calls `onTicketCreated` (a no-op in [App](App.md) — there's no ticket
+  list on that page to refresh, the confirmation message here is enough).
+- "Close" calls `onClose` — [App](App.md) owns actually unmounting this panel (back to
+  [QueuePanel](QueuePanel.md)).
 - Messages with `role: "staff"` are labeled "You" in the transcript.
 
 ## Related
 
-- [docs/components/QueuePanel.md](QueuePanel.md), [docs/components/StaffDashboard.md](StaffDashboard.md), [docs/components/TicketCard.md](TicketCard.md) (`CATEGORY_LABELS`/`PRIORITY_LABELS`)
+- [docs/components/QueuePanel.md](QueuePanel.md), [docs/components/App.md](App.md), [docs/components/TicketCard.md](TicketCard.md) (`CATEGORY_LABELS`/`PRIORITY_LABELS`)
 - [docs/api-routes/get-conversation-messages.md](../api-routes/get-conversation-messages.md), [docs/api-routes/post-staff-message.md](../api-routes/post-staff-message.md), [docs/api-routes/post-staff-create-ticket.md](../api-routes/post-staff-create-ticket.md)

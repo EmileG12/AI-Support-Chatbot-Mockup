@@ -6,9 +6,9 @@ Defined in `supabase/migrations/20260924020000_add_working_hours_handoff.sql`.
 
 A single-row-per-key settings table. Currently holds one flag, `working_hours`, which toggles the
 [live handoff feature](../backend-services/conversationFlow.md): on, a customer is queued for a
-staff member instead of the AI handling their issue end-to-end. Toggled from the staff dashboard
-header so a demo can switch between "AI handles everything" and "AI hands off to a human" without
-a redeploy.
+staff member instead of the AI handling their issue end-to-end. Toggled from the customer chat
+page's own header (see [App](../components/App.md)) so a demo can switch between "AI handles
+everything" and "AI hands off to a human" without a redeploy.
 
 ## Current DDL
 

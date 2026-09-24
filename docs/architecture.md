@@ -11,8 +11,8 @@ React staff UI (/staff)  --GET/PATCH /api/tickets-->        |
 ## Components
 
 - **Frontend** (`frontend/`, React + Vite + TypeScript): two pages, wired up with `react-router-dom` in `frontend/src/main.tsx`.
-  - `/` — the customer-facing chat (`frontend/src/App.tsx`). See [docs/components/App.md](components/App.md).
-  - `/staff` — the internal ticket dashboard (`frontend/src/StaffDashboard.tsx`). See [docs/components/StaffDashboard.md](components/StaffDashboard.md).
+  - `/` — the customer-facing chat, plus (side by side) the staff-side working-hours queue/live-chat panel (`frontend/src/App.tsx`). See [docs/components/App.md](components/App.md).
+  - `/staff` — the internal ticket dashboard: list/filter/inspect/override tickets and duplicates (`frontend/src/StaffDashboard.tsx`). See [docs/components/StaffDashboard.md](components/StaffDashboard.md).
   - The frontend never holds the Anthropic key or the Supabase service-role key — every data access goes through the backend.
 - **Backend** (`backend/`, Node + Express + TypeScript): the only thing that holds `ANTHROPIC_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY`. `backend/src/app.ts` builds and exports the Express app (all routes); `backend/src/server.ts` just imports it and calls `.listen()` — kept separate so tests can import the app without binding a real port. See [docs/api-routes/README.md](api-routes/README.md) for its routes and [docs/backend-services/README.md](backend-services/README.md) for its service modules.
 - **Database**: Supabase (Postgres), run locally via the Supabase CLI (`supabase start`), which manages Docker itself. See [docs/db-schema/README.md](db-schema/README.md).
@@ -46,12 +46,15 @@ The dashboard is the human-in-the-loop check on the AI's classification: staff c
 
 ## Data flow: working-hours live handoff
 
-A global `working_hours` flag ([app_settings](db-schema/app_settings.md), toggled from the staff
-dashboard header) changes what happens once a customer's contact is confirmed: instead of Claude
+A global `working_hours` flag ([app_settings](db-schema/app_settings.md), toggled in [App](components/App.md)'s
+own header, on `/`) changes what happens once a customer's contact is confirmed: instead of Claude
 continuing to troubleshoot, the conversation is queued (`conversations.handoff_status`) with a
-randomized wait estimate, and the AI stops responding to it entirely.
+randomized wait estimate, and the AI stops responding to it entirely. `App` also renders the
+staff-side [QueuePanel](components/QueuePanel.md)/[StaffChatWindow](components/StaffChatWindow.md)
+in a panel next to the customer's own chat (not on `/staff`), so a single browser tab can show both
+sides of the handoff at once for a demo.
 
-A staff member joins a queued conversation from the dashboard's queue panel (`POST
+A staff member joins a queued conversation from the queue panel (`POST
 .../staff-join`), which marks it `live` and asks Claude for a one-off, non-conversational drafted
 ticket summary (`ticketAgent.draftTicketSummary`) so the staff member has context. From there,
 staff and customer message each other directly (`POST .../staff-message` on the staff side, the
