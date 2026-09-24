@@ -9,7 +9,7 @@ vi.mock("@anthropic-ai/sdk", () => ({
   }),
 }));
 
-import { runAgentTurn } from "./ticketAgent.js";
+import { runAgentTurn, draftTicketSummary } from "./ticketAgent.js";
 
 const history: MessageParam[] = [{ role: "user", content: "my broadband is really slow" }];
 
@@ -129,5 +129,47 @@ describe("runAgentTurn", () => {
       },
       pendingContact: null,
     });
+  });
+});
+
+describe("draftTicketSummary", () => {
+  beforeEach(() => {
+    mockCreate.mockReset();
+  });
+
+  it("forces the create_ticket tool and returns the parsed draft with a single call", async () => {
+    mockCreate.mockResolvedValueOnce({
+      content: [
+        {
+          type: "tool_use",
+          id: "toolu_draft",
+          name: "create_ticket",
+          input: {
+            category: "broadband_fault",
+            priority: "high",
+            summary: "Broadband down, router light solid red.",
+            raw_message: "my broadband is really slow",
+          },
+        },
+      ],
+    });
+
+    const result = await draftTicketSummary(history);
+
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(mockCreate.mock.calls[0][0].tool_choice).toEqual({ type: "tool", name: "create_ticket" });
+    expect(result).toEqual({
+      category: "broadband_fault",
+      priority: "high",
+      summary: "Broadband down, router light solid red.",
+      raw_message: "my broadband is really slow",
+    });
+  });
+
+  it("returns null for an empty history without calling Claude", async () => {
+    const result = await draftTicketSummary([]);
+
+    expect(result).toBeNull();
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 });

@@ -16,6 +16,7 @@ troubleshooting playbooks), and the function that drives one turn of the convers
 - `CreateTicketArgs` — the shape of a `create_ticket` tool call: `category`, `priority`, `summary`, `raw_message` (required), `troubleshooting_notes` (optional). No longer carries contact fields — see [contactValidation](contactValidation.md)'s `ContactDetails` and [conversationFlow](conversationFlow.md) for how contact is handled separately.
 - `AgentTurnResult` — `{ reply: string; ticket: CreateTicketArgs | null; pendingContact: ContactDetails | null }`.
 - `runAgentTurn(history: MessageParam[], contactConfirmed: boolean): Promise<AgentTurnResult>` — see below.
+- `draftTicketSummary(history: MessageParam[]): Promise<CreateTicketArgs | null>` — a single call that force-calls `create_ticket` (via `tool_choice: { type: "tool", name: "create_ticket" }`) against the transcript so far, to extract a draft category/priority/summary for a staff member joining a live handoff to read (see [conversationFlow.staffJoinConversation](conversationFlow.md)). Not a conversational turn — nothing is persisted, no follow-up call, and it doesn't touch `pendingContact`/tool-gating at all. Returns `null` for an empty history without calling Claude.
 
 ## How classification works
 

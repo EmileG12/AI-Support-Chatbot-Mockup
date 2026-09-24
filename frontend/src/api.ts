@@ -1,4 +1,16 @@
-import type { ChatResponse, ContactActionResponse, ContactDetails, Ticket, TicketDetail } from "./types";
+import type {
+  ChatMessage,
+  ChatResponse,
+  ContactActionResponse,
+  ContactDetails,
+  ConversationMessagesResponse,
+  DraftTicket,
+  QueueEntry,
+  Settings,
+  StaffJoinResponse,
+  Ticket,
+  TicketDetail,
+} from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001";
 
@@ -82,4 +94,56 @@ export async function submitContact(
     body: JSON.stringify(details),
   });
   return parseOrThrow(res, "Failed to update contact details");
+}
+
+export async function getSettings(): Promise<Settings> {
+  const res = await fetch(`${API_BASE_URL}/api/settings`);
+  return parseOrThrow(res, "Failed to load settings");
+}
+
+export async function updateSettings(settings: Settings): Promise<Settings> {
+  const res = await fetch(`${API_BASE_URL}/api/settings`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
+  return parseOrThrow(res, "Failed to update settings");
+}
+
+export async function getQueue(): Promise<QueueEntry[]> {
+  const res = await fetch(`${API_BASE_URL}/api/conversations/queue`);
+  const data = await parseOrThrow<{ queue: QueueEntry[] }>(res, "Failed to load the queue");
+  return data.queue;
+}
+
+export async function getConversationMessages(conversationId: string): Promise<ConversationMessagesResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/messages`);
+  return parseOrThrow(res, "Failed to load conversation messages");
+}
+
+export async function staffJoin(conversationId: string): Promise<StaffJoinResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/staff-join`, {
+    method: "POST",
+  });
+  return parseOrThrow(res, "Failed to join the conversation");
+}
+
+export async function sendStaffMessage(conversationId: string, message: string): Promise<ChatMessage> {
+  const res = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/staff-message`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  const data = await parseOrThrow<{ message: ChatMessage }>(res, "Failed to send message");
+  return data.message;
+}
+
+export async function createTicketFromDraft(conversationId: string, draft: DraftTicket): Promise<Ticket> {
+  const res = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/staff-create-ticket`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(draft),
+  });
+  const data = await parseOrThrow<{ ticket: Ticket }>(res, "Failed to create the ticket");
+  return data.ticket;
 }

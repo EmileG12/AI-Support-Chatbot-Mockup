@@ -1,14 +1,20 @@
 import express from "express";
 import cors from "cors";
 import { supabase } from "./supabaseClient.js";
-import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from "./ticketAgent.js";
+import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES, type CreateTicketArgs } from "./ticketAgent.js";
 import {
   runAndPersistTurn,
   insertUserMessage,
   confirmPendingContact,
   overwriteContact,
+  listQueuedConversations,
+  getConversationMessages,
+  staffJoinConversation,
+  sendStaffMessage,
+  createTicketForConversation,
 } from "./conversationFlow.js";
 import type { ContactDetails } from "./contactValidation.js";
+import { getWorkingHours, setWorkingHours } from "./settings.js";
 
 export const app = express();
 app.use(cors());
@@ -41,13 +47,16 @@ app.post("/api/chat", async (req, res) => {
 
     await insertUserMessage(activeConversationId, message);
 
-    const { reply, ticket, pendingContact } = await runAndPersistTurn(activeConversationId);
+    const { reply, ticket, pendingContact, handoffStatus, estimatedWaitMinutes } =
+      await runAndPersistTurn(activeConversationId);
 
     res.json({
       conversationId: activeConversationId,
       reply,
       ticket,
       pendingContact,
+      handoffStatus,
+      estimatedWaitMinutes,
     });
   } catch (err) {
     console.error(err);
@@ -74,6 +83,118 @@ app.patch("/api/conversations/:id/contact", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to update contact details" });
+  }
+});
+
+interface SettingsBody {
+  workingHours?: unknown;
+}
+
+app.get("/api/settings", async (_req, res) => {
+  try {
+    const workingHours = await getWorkingHours();
+    res.json({ workingHours });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load settings" });
+  }
+});
+
+app.patch("/api/settings", async (req, res) => {
+  const { workingHours } = req.body as SettingsBody;
+  if (typeof workingHours !== "boolean") {
+    return res.status(400).json({ error: "workingHours must be a boolean" });
+  }
+
+  try {
+    await setWorkingHours(workingHours);
+    res.json({ workingHours });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update settings" });
+  }
+});
+
+app.get("/api/conversations/queue", async (_req, res) => {
+  try {
+    const queue = await listQueuedConversations();
+    res.json({ queue });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load the queue" });
+  }
+});
+
+app.get("/api/conversations/:id/messages", async (req, res) => {
+  try {
+    const result = await getConversationMessages(req.params.id);
+    if ("error" in result) return res.status(404).json({ error: result.error });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load conversation messages" });
+  }
+});
+
+app.post("/api/conversations/:id/staff-join", async (req, res) => {
+  try {
+    const result = await staffJoinConversation(req.params.id);
+    if ("error" in result) return res.status(400).json({ error: result.error });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to join the conversation" });
+  }
+});
+
+interface StaffMessageBody {
+  message?: string;
+}
+
+app.post("/api/conversations/:id/staff-message", async (req, res) => {
+  const { message } = req.body as StaffMessageBody;
+  if (!message || typeof message !== "string" || !message.trim()) {
+    return res.status(400).json({ error: "message is required" });
+  }
+
+  try {
+    const result = await sendStaffMessage(req.params.id, message);
+    if ("error" in result) return res.status(400).json({ error: result.error });
+    res.json({ message: result });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to send staff message" });
+  }
+});
+
+app.post("/api/conversations/:id/staff-create-ticket", async (req, res) => {
+  const { category, priority, summary, raw_message, troubleshooting_notes } = req.body as Partial<CreateTicketArgs>;
+
+  if (!category || !TICKET_CATEGORIES.includes(category as (typeof TICKET_CATEGORIES)[number])) {
+    return res.status(400).json({ error: `Invalid category: ${category}` });
+  }
+  if (!priority || !TICKET_PRIORITIES.includes(priority as (typeof TICKET_PRIORITIES)[number])) {
+    return res.status(400).json({ error: `Invalid priority: ${priority}` });
+  }
+  if (!summary || typeof summary !== "string" || !summary.trim()) {
+    return res.status(400).json({ error: "summary is required" });
+  }
+  if (!raw_message || typeof raw_message !== "string" || !raw_message.trim()) {
+    return res.status(400).json({ error: "raw_message is required" });
+  }
+
+  try {
+    const ticket = await createTicketForConversation(req.params.id, {
+      category,
+      priority,
+      summary,
+      raw_message,
+      troubleshooting_notes,
+    });
+    res.json({ ticket });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to create the ticket" });
   }
 });
 

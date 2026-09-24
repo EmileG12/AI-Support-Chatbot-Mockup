@@ -24,8 +24,13 @@ No body.
 ## Response
 
 ```ts
-{ reply: string; ticket: Ticket | null }
+{ reply: string; ticket: Ticket | null; handoffStatus: "none" | "queued" | "live"; estimatedWaitMinutes: number | null }
 ```
+
+If [working hours are on](../backend-services/settings.md), this is the call where the queue
+transition actually fires — `handoffStatus` comes back `"queued"` and `reply` is the deterministic
+queued-message template rather than a real Claude reply. See
+[conversationFlow](../backend-services/conversationFlow.md).
 
 `400` with `{ error: string }` (conversation not found / already confirmed / invalid stored data),
 `500` on other failures.

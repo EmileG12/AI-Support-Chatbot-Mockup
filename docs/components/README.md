@@ -7,3 +7,5 @@
 | [TicketCard](TicketCard.md) | `frontend/src/TicketCard.tsx` | Ticket summary card, used in both pages above |
 | [ContactConfirmCard](ContactConfirmCard.md) | `frontend/src/ContactConfirmCard.tsx` | Yes/Edit card over auto-detected contact details |
 | [ContactForm](ContactForm.md) | `frontend/src/ContactForm.tsx` | Plain form for correcting contact details |
+| [QueuePanel](QueuePanel.md) | `frontend/src/QueuePanel.tsx` | List of customers waiting for a staff member, with a "Join" action |
+| [StaffChatWindow](StaffChatWindow.md) | `frontend/src/StaffChatWindow.tsx` | Live staff <-> customer chat, once joined |

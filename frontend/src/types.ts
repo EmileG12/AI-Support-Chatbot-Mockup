@@ -45,24 +45,61 @@ export interface Ticket {
 
 export interface ChatMessage {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "staff";
   content: string;
 }
+
+export type HandoffStatus = "none" | "queued" | "live";
 
 export interface ChatResponse {
   conversationId: string;
   reply: string;
   ticket: Ticket | null;
   pendingContact: ContactDetails | null;
+  handoffStatus?: HandoffStatus;
+  estimatedWaitMinutes?: number | null;
 }
 
 export interface ContactActionResponse {
   reply: string;
   ticket: Ticket | null;
+  handoffStatus?: HandoffStatus;
+  estimatedWaitMinutes?: number | null;
 }
 
 export interface TicketDetail {
   ticket: Ticket;
   messages: ChatMessage[];
   duplicateOf: { id: string; summary: string } | null;
+}
+
+export interface Settings {
+  workingHours: boolean;
+}
+
+export interface QueueEntry {
+  id: string;
+  customer_name: string | null;
+  queued_at: string | null;
+  estimated_wait_minutes: number | null;
+}
+
+/** The AI's draft category/priority/summary for a staff member to read and edit. */
+export interface DraftTicket {
+  category: TicketCategory;
+  priority: TicketPriority;
+  summary: string;
+  raw_message: string;
+  troubleshooting_notes?: string;
+}
+
+export interface ConversationMessagesResponse {
+  handoffStatus: HandoffStatus;
+  estimatedWaitMinutes: number | null;
+  messages: ChatMessage[];
+}
+
+export interface StaffJoinResponse {
+  draftTicket: DraftTicket | null;
+  messages: ChatMessage[];
 }

@@ -6,9 +6,10 @@ Tests the Express app exported from `backend/src/app.ts` (see [api-routes](../ap
 via `supertest`, so no real port is bound — this is also the only test coverage for
 [conversationFlow](../backend-services/conversationFlow.md), since it's exercised through the
 routes rather than unit-tested directly. Mocks `backend/src/supabaseClient.ts` (via
-`backend/src/test/supabaseMock.ts`), `backend/src/duplicates.ts`, and `runAgentTurn` from
-`backend/src/ticketAgent.ts` (keeping its real `TICKET_CATEGORIES`/`TICKET_PRIORITIES`/
-`TICKET_STATUSES` exports via `importOriginal`, since `PATCH /api/tickets/:id` validates against
+`backend/src/test/supabaseMock.ts`), `backend/src/duplicates.ts`, and `runAgentTurn`/
+`draftTicketSummary` from `backend/src/ticketAgent.ts` (keeping its real
+`TICKET_CATEGORIES`/`TICKET_PRIORITIES`/`TICKET_STATUSES` exports via `importOriginal`, since
+`PATCH /api/tickets/:id` and `POST /api/conversations/:id/staff-create-ticket` validate against
 them).
 
 ## Covers
@@ -34,6 +35,26 @@ them).
 - `PATCH /api/conversations/:id/contact` 400s on an invalid email without touching Supabase, and on
   valid input overwrites the conversation's contact fields, confirms them, and asserts the
   correction is persisted as a `user`-role message containing the corrected values.
+- `POST /api/chat` transitions a confirmed-contact conversation to `handoff_status: "queued"` when
+  [working hours are on](../backend-services/settings.md) (mocked `Math.random` for a deterministic
+  wait estimate), inserting the canned queued-message template **without calling the mocked
+  `runAgentTurn` at all** and returning `handoffStatus`/`estimatedWaitMinutes` in the response.
+- `POST /api/chat` gives an empty reply and never calls `runAgentTurn` once the conversation is
+  `"queued"` or `"live"` — the message is just persisted for whichever side polls it next.
+- `GET`/`PATCH /api/settings` read/write the `working_hours` flag; `PATCH` rejects a non-boolean
+  without touching Supabase.
+- `GET /api/conversations/queue` returns the queued-conversations list as-is.
+- `GET /api/conversations/:id/messages` 404s when the conversation isn't found, otherwise returns
+  `handoffStatus`/`estimatedWaitMinutes`/`messages`.
+- `POST /api/conversations/:id/staff-join` 400s unless the conversation is currently `"queued"`;
+  on success marks it `"live"` and returns the (mocked) `draftTicketSummary` result plus the full
+  transcript.
+- `POST /api/conversations/:id/staff-message` rejects a blank message without touching Supabase,
+  400s unless the conversation is currently `"live"`, and otherwise inserts and returns the
+  `role: "staff"` message.
+- `POST /api/conversations/:id/staff-create-ticket` 400s on an invalid category without touching
+  Supabase, and on valid input creates the ticket via the same shared path
+  `createTicketForConversation` uses for the normal `create_ticket` tool call.
 
 Uses `backend/src/test/supabaseMock.ts`'s chainable query-builder mock: each `await
 supabase.from(...)` call in the code under test consumes the next result queued with

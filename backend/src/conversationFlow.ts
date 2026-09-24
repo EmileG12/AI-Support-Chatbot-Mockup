@@ -1,14 +1,31 @@
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import { supabase } from "./supabaseClient.js";
-import { runAgentTurn, type CreateTicketArgs } from "./ticketAgent.js";
+import { runAgentTurn, draftTicketSummary, type CreateTicketArgs } from "./ticketAgent.js";
 import { findPossibleDuplicateTicket } from "./duplicates.js";
 import { validateContactDetails, type ContactDetails } from "./contactValidation.js";
+import { getWorkingHours } from "./settings.js";
+
+export type HandoffStatus = "none" | "queued" | "live";
+
+export interface StoredMessage {
+  id: string;
+  role: "user" | "assistant" | "staff";
+  content: string;
+}
 
 export function formatContactConfirmation(contact: ContactDetails): string {
   return (
     `Just to confirm, that's:\nName: ${contact.name}\nEmail: ${contact.email}\nPhone: ${contact.phone}\n` +
     `Address: ${contact.address}\nPostcode: ${contact.postcode}\n` +
     `Account holder: ${contact.isAccountHolder ? "Yes" : "No"}\n\nIs that all correct?`
+  );
+}
+
+export function formatQueuedMessage(waitMinutes: number): string {
+  return (
+    `Thanks! Our team is currently handling other chats - you're in the queue and a team member ` +
+    `will be with you shortly (estimated wait: ${waitMinutes} minute${waitMinutes === 1 ? "" : "s"}). ` +
+    `Feel free to add any more details about your issue in the meantime.`
   );
 }
 
@@ -21,21 +38,32 @@ async function loadHistory(conversationId: string): Promise<MessageParam[]> {
   if (error) throw error;
 
   return (data ?? []).map((m) => ({
-    role: m.role as "user" | "assistant",
+    // Claude only accepts user/assistant roles - a staff reply reads to it as an assistant turn.
+    role: m.role === "user" ? "user" : "assistant",
     content: m.content as string,
   }));
 }
 
-async function isContactConfirmed(conversationId: string): Promise<boolean> {
-  const { data } = await supabase
-    .from("conversations")
-    .select("contact_confirmed")
-    .eq("id", conversationId)
-    .single();
-  return data?.contact_confirmed ?? false;
+interface ConversationState {
+  contactConfirmed: boolean;
+  handoffStatus: HandoffStatus;
+  estimatedWaitMinutes: number | null;
 }
 
-async function insertMessage(conversationId: string, role: "user" | "assistant", content: string) {
+async function loadConversationState(conversationId: string): Promise<ConversationState> {
+  const { data } = await supabase
+    .from("conversations")
+    .select("contact_confirmed, handoff_status, estimated_wait_minutes")
+    .eq("id", conversationId)
+    .single();
+  return {
+    contactConfirmed: data?.contact_confirmed ?? false,
+    handoffStatus: (data?.handoff_status as HandoffStatus) ?? "none",
+    estimatedWaitMinutes: data?.estimated_wait_minutes ?? null,
+  };
+}
+
+async function insertMessage(conversationId: string, role: "user" | "assistant" | "staff", content: string) {
   const { error } = await supabase
     .from("messages")
     .insert({ conversation_id: conversationId, role, content });
@@ -46,7 +74,8 @@ export async function insertUserMessage(conversationId: string, content: string)
   await insertMessage(conversationId, "user", content);
 }
 
-async function createTicketForConversation(conversationId: string, ticket: CreateTicketArgs) {
+
+export async function createTicketForConversation(conversationId: string, ticket: CreateTicketArgs) {
   const { data: conversation } = await supabase
     .from("conversations")
     .select(
@@ -91,6 +120,8 @@ export interface TurnResult {
   reply: string;
   ticket: Record<string, unknown> | null;
   pendingContact: ContactDetails | null;
+  handoffStatus: HandoffStatus;
+  estimatedWaitMinutes: number | null;
 }
 
 /**
@@ -101,11 +132,45 @@ export interface TurnResult {
  * the outcome."
  */
 export async function runAndPersistTurn(conversationId: string): Promise<TurnResult> {
-  const [history, contactConfirmed] = await Promise.all([
-    loadHistory(conversationId),
-    isContactConfirmed(conversationId),
-  ]);
-  const { reply, ticket, pendingContact } = await runAgentTurn(history, contactConfirmed);
+  const state = await loadConversationState(conversationId);
+
+  // Once queued/live, the AI is out of the loop entirely - the message the
+  // caller already persisted just waits for (or was replied to directly by) a
+  // staff member; see staffJoinConversation/insertStaffMessage.
+  if (state.handoffStatus === "queued" || state.handoffStatus === "live") {
+    return {
+      reply: "",
+      ticket: null,
+      pendingContact: null,
+      handoffStatus: state.handoffStatus,
+      estimatedWaitMinutes: state.estimatedWaitMinutes,
+    };
+  }
+
+  if (state.contactConfirmed && state.handoffStatus === "none" && (await getWorkingHours())) {
+    const waitMinutes = 1 + Math.floor(Math.random() * 5);
+    await supabase
+      .from("conversations")
+      .update({
+        handoff_status: "queued",
+        estimated_wait_minutes: waitMinutes,
+        queued_at: new Date().toISOString(),
+      })
+      .eq("id", conversationId);
+
+    const queuedText = formatQueuedMessage(waitMinutes);
+    await insertMessage(conversationId, "assistant", queuedText);
+    return {
+      reply: queuedText,
+      ticket: null,
+      pendingContact: null,
+      handoffStatus: "queued",
+      estimatedWaitMinutes: waitMinutes,
+    };
+  }
+
+  const history = await loadHistory(conversationId);
+  const { reply, ticket, pendingContact } = await runAgentTurn(history, state.contactConfirmed);
 
   if (pendingContact) {
     await supabase
@@ -122,7 +187,13 @@ export async function runAndPersistTurn(conversationId: string): Promise<TurnRes
 
     const confirmationText = formatContactConfirmation(pendingContact);
     await insertMessage(conversationId, "assistant", confirmationText);
-    return { reply: confirmationText, ticket: null, pendingContact };
+    return {
+      reply: confirmationText,
+      ticket: null,
+      pendingContact,
+      handoffStatus: "none",
+      estimatedWaitMinutes: null,
+    };
   }
 
   if (reply) {
@@ -131,12 +202,20 @@ export async function runAndPersistTurn(conversationId: string): Promise<TurnRes
 
   const createdTicket = ticket ? await createTicketForConversation(conversationId, ticket) : null;
 
-  return { reply, ticket: createdTicket, pendingContact: null };
+  return {
+    reply,
+    ticket: createdTicket,
+    pendingContact: null,
+    handoffStatus: "none",
+    estimatedWaitMinutes: null,
+  };
 }
 
 export interface ContactActionResult {
   reply: string;
   ticket: Record<string, unknown> | null;
+  handoffStatus: HandoffStatus;
+  estimatedWaitMinutes: number | null;
 }
 
 async function finalizeContact(
@@ -150,8 +229,8 @@ async function finalizeContact(
   // sees two assistant turns in a row with nothing to respond to.
   await insertMessage(conversationId, "user", confirmationMessage);
 
-  const { reply, ticket } = await runAndPersistTurn(conversationId);
-  return { reply, ticket };
+  const { reply, ticket, handoffStatus, estimatedWaitMinutes } = await runAndPersistTurn(conversationId);
+  return { reply, ticket, handoffStatus, estimatedWaitMinutes };
 }
 
 /** Customer clicked "Yes" on the auto-detected confirmation card. */
@@ -217,4 +296,105 @@ export async function overwriteContact(
       `Phone: ${contact.phone}, Address: ${contact.address}, Postcode: ${contact.postcode}, ` +
       `Account holder: ${contact.isAccountHolder ? "Yes" : "No"}.`
   );
+}
+
+export interface QueueEntry {
+  id: string;
+  customer_name: string | null;
+  queued_at: string | null;
+  estimated_wait_minutes: number | null;
+}
+
+/** Conversations currently waiting for a staff member, for the dashboard's queue panel. */
+export async function listQueuedConversations(): Promise<QueueEntry[]> {
+  const { data, error } = await supabase
+    .from("conversations")
+    .select("id, customer_name, queued_at, estimated_wait_minutes")
+    .eq("handoff_status", "queued")
+    .order("queued_at", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export interface ConversationMessagesResult {
+  handoffStatus: HandoffStatus;
+  estimatedWaitMinutes: number | null;
+  messages: StoredMessage[];
+}
+
+/** Polling endpoint backing both the customer chat and the staff chat window. */
+export async function getConversationMessages(
+  conversationId: string
+): Promise<ConversationMessagesResult | { error: string }> {
+  const { data: conversation, error: convError } = await supabase
+    .from("conversations")
+    .select("handoff_status, estimated_wait_minutes")
+    .eq("id", conversationId)
+    .single();
+  if (convError || !conversation) return { error: "Conversation not found" };
+
+  const { data: messages, error: messagesError } = await supabase
+    .from("messages")
+    .select("id, role, content")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true });
+  if (messagesError) throw messagesError;
+
+  return {
+    handoffStatus: (conversation.handoff_status as HandoffStatus) ?? "none",
+    estimatedWaitMinutes: conversation.estimated_wait_minutes ?? null,
+    messages: messages ?? [],
+  };
+}
+
+export interface StaffJoinResult {
+  draftTicket: CreateTicketArgs | null;
+  messages: StoredMessage[];
+}
+
+/** Staff clicked "Join" on a queued conversation in the dashboard. */
+export async function staffJoinConversation(
+  conversationId: string
+): Promise<StaffJoinResult | { error: string }> {
+  const { data: conversation } = await supabase
+    .from("conversations")
+    .select("handoff_status")
+    .eq("id", conversationId)
+    .single();
+  if (!conversation || conversation.handoff_status !== "queued") {
+    return { error: "Conversation is not currently queued" };
+  }
+
+  await supabase
+    .from("conversations")
+    .update({ handoff_status: "live", staff_joined_at: new Date().toISOString() })
+    .eq("id", conversationId);
+
+  const history = await loadHistory(conversationId);
+  const draftTicket = await draftTicketSummary(history);
+
+  const result = await getConversationMessages(conversationId);
+  if ("error" in result) return result;
+
+  return { draftTicket, messages: result.messages };
+}
+
+/** Staff member typed a reply while live with a customer. */
+export async function sendStaffMessage(
+  conversationId: string,
+  content: string
+): Promise<StoredMessage | { error: string }> {
+  const state = await loadConversationState(conversationId);
+  if (state.handoffStatus !== "live") {
+    return { error: "Conversation is not currently in a live handoff" };
+  }
+
+  const { data, error } = await supabase
+    .from("messages")
+    .insert({ conversation_id: conversationId, role: "staff", content })
+    .select("id, role, content")
+    .single();
+  if (error) throw error;
+
+  return data as StoredMessage;
 }

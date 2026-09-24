@@ -16,9 +16,19 @@ Internal view for reviewing and correcting what the chat agent logged: list tick
   - **"Close as duplicate"** — `updateTicket(id, { status: "closed" })`.
   - **"Not a duplicate"** — `updateTicket(id, { duplicate_dismissed: true })`. This doesn't clear `possible_duplicate_of`/`duplicate_similarity` (kept as audit history — see [docs/db-schema/tickets.md](../db-schema/tickets.md)), it just stops the warning from being shown; the banner disappears immediately since `detail.ticket` updates in place.
 - Uses `CATEGORY_LABELS`/`PRIORITY_LABELS`, exported from [TicketCard](TicketCard.md), for both the current ticket's editable badges and the duplicate panel's read-only ones, so labels stay visually consistent with the customer-facing chat view.
+- Header has a "Working hours" checkbox (`getSettings` on mount, `updateSettings` on toggle — see
+  [settings](../backend-services/settings.md)); optimistically flips local state and rolls back with
+  an error banner if the request fails.
+- Renders [QueuePanel](QueuePanel.md) above the ticket list/detail area. Its `onJoined` callback
+  stores `{ id, draftTicket, messages }` in `liveConversation` state, which renders
+  [StaffChatWindow](StaffChatWindow.md) as a further panel alongside `.detail-area` (same
+  flex-panel layout the duplicate-detail panel uses) — independent of whichever ticket happens to
+  be selected in the main list, since a live handoff and "inspecting a ticket" are unrelated.
+  `onTicketCreated` clears `liveConversation` and re-runs `loadTickets` so the newly created ticket
+  shows up in the list immediately.
 
 ## Related
 
-- [docs/components/TicketCard.md](TicketCard.md)
-- [docs/api-routes/README.md](../api-routes/README.md) (`GET /api/tickets`, `GET /api/tickets/:id`, `PATCH /api/tickets/:id`)
+- [docs/components/TicketCard.md](TicketCard.md), [docs/components/QueuePanel.md](QueuePanel.md), [docs/components/StaffChatWindow.md](StaffChatWindow.md)
+- [docs/api-routes/README.md](../api-routes/README.md) (`GET /api/tickets`, `GET /api/tickets/:id`, `PATCH /api/tickets/:id`, `GET`/`PATCH /api/settings`)
 - [docs/rpc-functions/find_possible_duplicate_ticket.md](../rpc-functions/find_possible_duplicate_ticket.md)

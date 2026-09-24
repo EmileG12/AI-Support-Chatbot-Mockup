@@ -12,20 +12,22 @@ vi.mock("./duplicates.js", () => ({
 
 vi.mock("./ticketAgent.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./ticketAgent.js")>();
-  return { ...actual, runAgentTurn: vi.fn() };
+  return { ...actual, runAgentTurn: vi.fn(), draftTicketSummary: vi.fn() };
 });
 
 import { supabase, queueResult, resetSupabaseMock } from "./test/supabaseMock.js";
 import { findPossibleDuplicateTicket } from "./duplicates.js";
-import { runAgentTurn } from "./ticketAgent.js";
+import { runAgentTurn, draftTicketSummary } from "./ticketAgent.js";
 import { app } from "./app.js";
 
 const mockRunAgentTurn = vi.mocked(runAgentTurn);
+const mockDraftTicketSummary = vi.mocked(draftTicketSummary);
 const mockFindDuplicate = vi.mocked(findPossibleDuplicateTicket);
 
 beforeEach(() => {
   resetSupabaseMock();
   mockRunAgentTurn.mockReset();
+  mockDraftTicketSummary.mockReset();
   mockFindDuplicate.mockReset();
 });
 
@@ -124,8 +126,8 @@ describe("POST /api/chat", () => {
   it("creates a conversation when none is given, and returns a reply with no ticket", async () => {
     queueResult({ data: { id: "new-conv-id" }, error: null }); // conversations insert
     queueResult({ error: null, data: null }); // user message insert
+    queueResult({ data: { contact_confirmed: false }, error: null }); // conversation state lookup
     queueResult({ data: [{ role: "user", content: "my broadband is slow" }], error: null }); // history select
-    queueResult({ data: { contact_confirmed: false }, error: null }); // contact_confirmed lookup
     mockRunAgentTurn.mockResolvedValueOnce({
       reply: "Have you run a wired speed test?",
       ticket: null,
@@ -144,8 +146,9 @@ describe("POST /api/chat", () => {
 
   it("inserts a ticket with possible_duplicate_of when a duplicate is found", async () => {
     queueResult({ error: null, data: null }); // user message insert
+    queueResult({ data: { contact_confirmed: true }, error: null }); // conversation state lookup
+    queueResult({ data: { value: false }, error: null }); // working-hours settings lookup
     queueResult({ data: [{ role: "user", content: "broadband down again" }], error: null }); // history select
-    queueResult({ data: { contact_confirmed: true }, error: null }); // contact_confirmed lookup
     mockRunAgentTurn.mockResolvedValueOnce({
       reply: "Logged a fault ticket for you.",
       ticket: {
@@ -186,8 +189,8 @@ describe("POST /api/chat", () => {
 
   it("returns pendingContact and a deterministic confirmation message, with a single agent call", async () => {
     queueResult({ error: null, data: null }); // user message insert
+    queueResult({ data: { contact_confirmed: false }, error: null }); // conversation state lookup
     queueResult({ data: [{ role: "user", content: "Jane Doe, jane@example.com, 07700900000" }], error: null }); // history select
-    queueResult({ data: { contact_confirmed: false }, error: null }); // contact_confirmed lookup
     mockRunAgentTurn.mockResolvedValueOnce({
       reply: "",
       ticket: null,
@@ -228,6 +231,57 @@ describe("POST /api/chat", () => {
     expect(res.status).toBe(400);
     expect(supabase.from).not.toHaveBeenCalled();
   });
+
+  it("queues the customer instead of replying when working hours are on and contact is confirmed", async () => {
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0); // waitMinutes = 1
+    queueResult({ error: null, data: null }); // user message insert
+    queueResult({ data: { contact_confirmed: true, handoff_status: "none" }, error: null }); // conversation state lookup
+    queueResult({ data: { value: true }, error: null }); // working-hours settings lookup (on)
+    queueResult({ error: null, data: null }); // conversation update to handoff_status: "queued"
+    queueResult({ error: null, data: null }); // assistant queued-message insert
+
+    const res = await request(app)
+      .post("/api/chat")
+      .send({ conversationId: "existing-conv-id", message: "any more details while I wait" });
+
+    randomSpy.mockRestore();
+
+    expect(res.status).toBe(200);
+    expect(mockRunAgentTurn).not.toHaveBeenCalled();
+    expect(res.body.reply).toMatch(/queue/i);
+    expect(res.body.reply).toContain("estimated wait: 1 minute)");
+    expect(res.body.ticket).toBeNull();
+    expect(res.body.pendingContact).toBeNull();
+    expect(res.body.handoffStatus).toBe("queued");
+    expect(res.body.estimatedWaitMinutes).toBe(1);
+  });
+
+  it("gives no AI reply while queued - the customer's message just waits", async () => {
+    queueResult({ error: null, data: null }); // user message insert
+    queueResult({ data: { contact_confirmed: true, handoff_status: "queued" }, error: null }); // conversation state lookup
+
+    const res = await request(app)
+      .post("/api/chat")
+      .send({ conversationId: "existing-conv-id", message: "still waiting" });
+
+    expect(res.status).toBe(200);
+    expect(mockRunAgentTurn).not.toHaveBeenCalled();
+    expect(res.body.reply).toBe("");
+    expect(res.body.ticket).toBeNull();
+  });
+
+  it("gives no AI reply once a staff member is live - the message just waits for them", async () => {
+    queueResult({ error: null, data: null }); // user message insert
+    queueResult({ data: { contact_confirmed: true, handoff_status: "live" }, error: null }); // conversation state lookup
+
+    const res = await request(app)
+      .post("/api/chat")
+      .send({ conversationId: "existing-conv-id", message: "hello?" });
+
+    expect(res.status).toBe(200);
+    expect(mockRunAgentTurn).not.toHaveBeenCalled();
+    expect(res.body.reply).toBe("");
+  });
 });
 
 describe("POST /api/conversations/:id/confirm-contact", () => {
@@ -246,8 +300,9 @@ describe("POST /api/conversations/:id/confirm-contact", () => {
     }); // conversation lookup
     queueResult({ error: null, data: null }); // contact_confirmed = true update
     queueResult({ error: null, data: null }); // synthetic "Yes, that's correct." user message insert
+    queueResult({ data: { contact_confirmed: true }, error: null }); // conversation state lookup
+    queueResult({ data: { value: false }, error: null }); // working-hours settings lookup
     queueResult({ data: [{ role: "user", content: "my broadband is down" }], error: null }); // history select
-    queueResult({ data: { contact_confirmed: true }, error: null }); // contact_confirmed lookup
     mockRunAgentTurn.mockResolvedValueOnce({
       reply: "Sorry to hear that - is the router showing any lights?",
       ticket: null,
@@ -304,8 +359,9 @@ describe("PATCH /api/conversations/:id/contact", () => {
     queueResult({ error: null, data: null }); // conversation contact overwrite
     queueResult({ error: null, data: null }); // contact_confirmed = true update
     queueResult({ error: null, data: null }); // synthetic correction message insert
+    queueResult({ data: { contact_confirmed: true }, error: null }); // conversation state lookup
+    queueResult({ data: { value: false }, error: null }); // working-hours settings lookup
     queueResult({ data: [], error: null }); // history select
-    queueResult({ data: { contact_confirmed: true }, error: null }); // contact_confirmed lookup
     mockRunAgentTurn.mockResolvedValueOnce({
       reply: "Thanks - what can I help you with today?",
       ticket: null,
@@ -333,5 +389,175 @@ describe("PATCH /api/conversations/:id/contact", () => {
     expect(correctionInsertChain.insert).toHaveBeenCalledWith(
       expect.objectContaining({ role: "user", content: expect.stringContaining("jane@new-example.com") })
     );
+  });
+});
+
+describe("GET /api/settings", () => {
+  it("returns the working-hours flag", async () => {
+    queueResult({ data: { value: true }, error: null });
+
+    const res = await request(app).get("/api/settings");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ workingHours: true });
+  });
+});
+
+describe("PATCH /api/settings", () => {
+  it("rejects a non-boolean workingHours", async () => {
+    const res = await request(app).patch("/api/settings").send({ workingHours: "yes" });
+
+    expect(res.status).toBe(400);
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it("updates the flag", async () => {
+    queueResult({ data: null, error: null });
+
+    const res = await request(app).patch("/api/settings").send({ workingHours: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ workingHours: true });
+  });
+});
+
+describe("GET /api/conversations/queue", () => {
+  it("lists queued conversations", async () => {
+    queueResult({
+      data: [{ id: "c1", customer_name: "Jane Doe", queued_at: "2026-01-01T00:00:00Z", estimated_wait_minutes: 3 }],
+      error: null,
+    });
+
+    const res = await request(app).get("/api/conversations/queue");
+
+    expect(res.status).toBe(200);
+    expect(res.body.queue).toEqual([
+      { id: "c1", customer_name: "Jane Doe", queued_at: "2026-01-01T00:00:00Z", estimated_wait_minutes: 3 },
+    ]);
+  });
+});
+
+describe("GET /api/conversations/:id/messages", () => {
+  it("returns 404 when the conversation isn't found", async () => {
+    queueResult({ data: null, error: { message: "not found" } });
+
+    const res = await request(app).get("/api/conversations/missing/messages");
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns the handoff status, wait estimate, and messages", async () => {
+    queueResult({ data: { handoff_status: "live", estimated_wait_minutes: null }, error: null });
+    queueResult({ data: [{ id: "m1", role: "staff", content: "Hi, I'm here to help" }], error: null });
+
+    const res = await request(app).get("/api/conversations/c1/messages");
+
+    expect(res.status).toBe(200);
+    expect(res.body.handoffStatus).toBe("live");
+    expect(res.body.estimatedWaitMinutes).toBeNull();
+    expect(res.body.messages).toEqual([{ id: "m1", role: "staff", content: "Hi, I'm here to help" }]);
+  });
+});
+
+describe("POST /api/conversations/:id/staff-join", () => {
+  it("400s when the conversation isn't queued", async () => {
+    queueResult({ data: { handoff_status: "none" }, error: null });
+
+    const res = await request(app).post("/api/conversations/c1/staff-join");
+
+    expect(res.status).toBe(400);
+  });
+
+  it("marks the conversation live and returns an AI-drafted summary", async () => {
+    queueResult({ data: { handoff_status: "queued" }, error: null }); // handoff_status check
+    queueResult({ error: null, data: null }); // update to live
+    queueResult({ data: [{ role: "user", content: "my broadband is down" }], error: null }); // loadHistory
+    mockDraftTicketSummary.mockResolvedValueOnce({
+      category: "broadband_fault",
+      priority: "high",
+      summary: "Broadband outage reported.",
+      raw_message: "my broadband is down",
+    });
+    queueResult({ data: { handoff_status: "live", estimated_wait_minutes: 3 }, error: null }); // conv lookup for messages
+    queueResult({ data: [{ id: "m1", role: "user", content: "my broadband is down" }], error: null }); // messages
+
+    const res = await request(app).post("/api/conversations/c1/staff-join");
+
+    expect(res.status).toBe(200);
+    expect(res.body.draftTicket).toEqual({
+      category: "broadband_fault",
+      priority: "high",
+      summary: "Broadband outage reported.",
+      raw_message: "my broadband is down",
+    });
+    expect(res.body.messages).toEqual([{ id: "m1", role: "user", content: "my broadband is down" }]);
+  });
+});
+
+describe("POST /api/conversations/:id/staff-message", () => {
+  it("rejects a blank message", async () => {
+    const res = await request(app).post("/api/conversations/c1/staff-message").send({ message: "  " });
+
+    expect(res.status).toBe(400);
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it("400s when the conversation isn't live", async () => {
+    queueResult({ data: { contact_confirmed: true, handoff_status: "queued" }, error: null }); // state lookup
+
+    const res = await request(app).post("/api/conversations/c1/staff-message").send({ message: "Hi there" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("inserts the staff message when live", async () => {
+    queueResult({ data: { contact_confirmed: true, handoff_status: "live" }, error: null }); // state lookup
+    queueResult({ data: { id: "m2", role: "staff", content: "Hi there" }, error: null }); // insert + select
+
+    const res = await request(app).post("/api/conversations/c1/staff-message").send({ message: "Hi there" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toEqual({ id: "m2", role: "staff", content: "Hi there" });
+  });
+});
+
+describe("POST /api/conversations/:id/staff-create-ticket", () => {
+  it("rejects an invalid category", async () => {
+    const res = await request(app).post("/api/conversations/c1/staff-create-ticket").send({
+      category: "not_a_real_category",
+      priority: "high",
+      summary: "x",
+      raw_message: "y",
+    });
+
+    expect(res.status).toBe(400);
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it("creates the ticket via the shared ticket-creation path", async () => {
+    queueResult({
+      data: {
+        customer_name: "Jane Doe",
+        customer_email: "jane@example.com",
+        customer_phone: "07700900000",
+        customer_address: "1 High Street",
+        customer_postcode: "SW1A 1AA",
+        customer_is_account_holder: true,
+      },
+      error: null,
+    }); // conversation contact lookup
+    mockFindDuplicate.mockResolvedValueOnce(null);
+    queueResult({ data: { id: "new-ticket-id", category: "broadband_fault" }, error: null }); // ticket insert
+    queueResult({ error: null, data: null }); // conversation status update
+
+    const res = await request(app).post("/api/conversations/c1/staff-create-ticket").send({
+      category: "broadband_fault",
+      priority: "high",
+      summary: "Outage",
+      raw_message: "no internet",
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ticket.id).toBe("new-ticket-id");
   });
 });

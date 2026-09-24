@@ -272,3 +272,128 @@
   align-self: flex-start;
   background: #f0f0f4;
 }
+
+.transcript-staff {
+  align-self: flex-start;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+}
+
+.working-hours-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.queue-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.queue-panel h2 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.queue-empty {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.queue-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.queue-entry-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.queue-entry-name {
+  font-weight: 600;
+}
+
+.queue-entry-wait {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.staff-chat-window {
+  flex: 1 1 380px;
+}
+
+.staff-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.staff-chat-header h2 {
+  margin: 0;
+}
+
+.staff-draft-card {
+  background: #faf9ff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.staff-draft-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.staff-draft-textarea {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  gap: 4px;
+}
+
+.staff-draft-textarea textarea {
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  resize: vertical;
+}
+
+.staff-ticket-created {
+  margin: 0;
+  color: #047857;
+  font-weight: 600;
+  font-size: 0.85rem;
+}

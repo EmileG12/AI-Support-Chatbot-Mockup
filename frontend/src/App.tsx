@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { sendChatMessage, confirmContact, submitContact } from "./api";
+import { sendChatMessage, confirmContact, submitContact, getConversationMessages } from "./api";
 import { TicketCard } from "./TicketCard";
 import { ContactConfirmCard } from "./ContactConfirmCard";
 import { ContactForm } from "./ContactForm";
-import type { ChatMessage, ContactDetails, Ticket } from "./types";
+import type { ChatMessage, ContactActionResponse, ContactDetails, HandoffStatus, Ticket } from "./types";
 import "./App.css";
+
+const POLL_INTERVAL_MS = 2500;
 
 function makeId() {
   return crypto.randomUUID();
@@ -31,11 +33,43 @@ function App() {
   const [isContactSubmitting, setIsContactSubmitting] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
 
+  const [handoffStatus, setHandoffStatus] = useState<HandoffStatus>("none");
+  const [estimatedWaitMinutes, setEstimatedWaitMinutes] = useState<number | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isSending]);
+
+  // Once queued/live, the AI stops replying synchronously - poll for whatever a
+  // staff member (or the queue transition itself) has added, replacing the
+  // transcript with the authoritative server copy each tick (their ids differ
+  // from the locally-generated ones used for optimistic messages, so this
+  // avoids duplicating the same message under two different ids).
+  useEffect(() => {
+    if (!conversationId || (handoffStatus !== "queued" && handoffStatus !== "live")) return;
+
+    let cancelled = false;
+    async function poll() {
+      try {
+        const result = await getConversationMessages(conversationId!);
+        if (cancelled) return;
+        setMessages([WELCOME_MESSAGE, ...result.messages]);
+        setHandoffStatus(result.handoffStatus);
+        setEstimatedWaitMinutes(result.estimatedWaitMinutes);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    poll();
+    const interval = setInterval(poll, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [conversationId, handoffStatus]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -63,6 +97,8 @@ function App() {
       if (response.pendingContact) {
         setPendingContact(response.pendingContact);
       }
+      setHandoffStatus(response.handoffStatus ?? "none");
+      setEstimatedWaitMinutes(response.estimatedWaitMinutes ?? null);
     } catch (err) {
       console.error(err);
       setError("Something went wrong reaching the support assistant. Please try again.");
@@ -71,10 +107,7 @@ function App() {
     }
   }
 
-  function applyContactActionResult(
-    userAckText: string,
-    result: { reply: string; ticket: Ticket | null }
-  ) {
+  function applyContactActionResult(userAckText: string, result: ContactActionResponse) {
     setMessages((prev) => [
       ...prev,
       { id: makeId(), role: "user", content: userAckText },
@@ -88,6 +121,8 @@ function App() {
     setPendingContact(null);
     setIsEditingContact(false);
     setContactError(null);
+    setHandoffStatus(result.handoffStatus ?? "none");
+    setEstimatedWaitMinutes(result.estimatedWaitMinutes ?? null);
   }
 
   async function handleConfirmContact() {
@@ -137,6 +172,7 @@ function App() {
         <div className="message-list">
           {messages.map((m) => (
             <div key={m.id} className={`message message-${m.role}`}>
+              {m.role === "staff" && <span className="message-author">Support agent</span>}
               {m.content}
             </div>
           ))}
@@ -145,6 +181,16 @@ function App() {
           )}
           <div ref={messagesEndRef} />
         </div>
+
+        {handoffStatus === "queued" && (
+          <div className="handoff-banner">
+            Waiting for a team member — estimated wait: {estimatedWaitMinutes ?? "a few"}{" "}
+            minute{estimatedWaitMinutes === 1 ? "" : "s"}.
+          </div>
+        )}
+        {handoffStatus === "live" && (
+          <div className="handoff-banner handoff-live">You're now chatting with a team member.</div>
+        )}
 
         {ticket && (
           <div className="ticket-panel">

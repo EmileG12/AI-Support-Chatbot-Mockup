@@ -34,8 +34,28 @@ upfront contact-collection flow.
   the request fails.
 - Header includes a `Link` to `/staff` (the [StaffDashboard](StaffDashboard.md)).
 
+## Working-hours live handoff
+
+Every response that can carry `handoffStatus`/`estimatedWaitMinutes` (`sendChatMessage`,
+`confirmContact`, `submitContact`) updates `handoffStatus: HandoffStatus` state (`"none"` by
+default):
+
+- **`"queued"`**: a `.handoff-banner` shows "Waiting for a team member — estimated wait: N
+  minutes." The normal chat input stays enabled (contact is already confirmed by this point) so the
+  customer can keep typing while they wait.
+- **`"live"`**: the banner instead reads "You're now chatting with a team member." Messages with
+  `role: "staff"` render in their own bubble style, labeled "Support agent".
+
+While `handoffStatus` is `"queued"` or `"live"`, an effect polls
+[getConversationMessages](../frontend-utils/getConversationMessages.md) every 2.5s. Each tick
+**fully replaces** `messages` with `[WELCOME_MESSAGE, ...result.messages]` rather than merging by
+id — the server's message ids differ from the client-generated ids used for the messages already
+added optimistically during the normal send flow, so a merge-by-id would render the same message
+twice under two different ids. A full replace with the authoritative server transcript sidesteps
+that entirely (the visible content is identical either way, only the id changes).
+
 ## Related
 
 - [docs/components/TicketCard.md](TicketCard.md), [docs/components/ContactConfirmCard.md](ContactConfirmCard.md), [docs/components/ContactForm.md](ContactForm.md)
 - [docs/frontend-utils/README.md](../frontend-utils/README.md)
-- [docs/api-routes/post-api-chat.md](../api-routes/post-api-chat.md), [docs/api-routes/post-confirm-contact.md](../api-routes/post-confirm-contact.md), [docs/api-routes/patch-conversation-contact.md](../api-routes/patch-conversation-contact.md)
+- [docs/api-routes/post-api-chat.md](../api-routes/post-api-chat.md), [docs/api-routes/post-confirm-contact.md](../api-routes/post-confirm-contact.md), [docs/api-routes/patch-conversation-contact.md](../api-routes/patch-conversation-contact.md), [docs/api-routes/get-conversation-messages.md](../api-routes/get-conversation-messages.md)

@@ -26,3 +26,10 @@ calls.
 
 The mock's default export has to be a real `function`, not an arrow function, since
 `ticketAgent.ts` calls `new Anthropic(...)` — an arrow function can't be used as a constructor.
+
+## `draftTicketSummary`
+
+- Forces the `create_ticket` tool (asserts `tool_choice: { type: "tool", name: "create_ticket" }`
+  on the mocked call) and returns the parsed args from a single call - no follow-up call, unlike
+  `runAgentTurn`'s `create_ticket` path.
+- Returns `null` for an empty history without calling Claude at all.

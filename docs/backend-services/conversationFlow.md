@@ -4,31 +4,46 @@
 
 ## Purpose
 
-Everything about running a turn of the conversation and persisting the result, shared by
-`POST /api/chat` and the two contact confirm/correct endpoints — all three need "run a turn
-against the current conversation state and persist whatever it produced."
+Everything about running a turn of the conversation and persisting the result — shared by
+`POST /api/chat` and the two contact confirm/correct endpoints — plus the working-hours queue/live
+handoff: transitioning a confirmed-contact customer into a queue, a staff member joining and
+drafting a ticket summary, and the staff <-> customer messaging that follows.
 
 ## Exports
 
 - `insertUserMessage(conversationId, content)` — inserts a `role: "user"` row into `messages`.
 - `runAndPersistTurn(conversationId): Promise<TurnResult>` — the core shared function, see below.
-  `TurnResult = { reply: string; ticket: Record<string, unknown> | null; pendingContact: ContactDetails | null }`.
+  `TurnResult = { reply: string; ticket: Record<string, unknown> | null; pendingContact: ContactDetails | null; handoffStatus: HandoffStatus; estimatedWaitMinutes: number | null }`.
 - `confirmPendingContact(conversationId): Promise<ContactActionResult | { error: string }>` — customer clicked "Yes".
 - `overwriteContact(conversationId, input): Promise<ContactActionResult | { error: string }>` — customer submitted the correction form.
-  `ContactActionResult = { reply: string; ticket: Record<string, unknown> | null }`.
+  `ContactActionResult = { reply: string; ticket: Record<string, unknown> | null; handoffStatus: HandoffStatus; estimatedWaitMinutes: number | null }`.
 - `formatContactConfirmation(contact)` — the fixed "Just to confirm, that's: ... Is that all correct?" template.
+- `formatQueuedMessage(waitMinutes)` — the fixed "you're in the queue, estimated wait N minutes" template.
+- `createTicketForConversation(conversationId, ticket)` — inserts a `tickets` row from a `CreateTicketArgs`, copying the conversation's confirmed contact fields, running the duplicate check, and marking the conversation `resolved`. Used by the normal `create_ticket` flow *and* by `POST /api/conversations/:id/staff-create-ticket`.
+- `listQueuedConversations(): Promise<QueueEntry[]>` — conversations with `handoff_status: "queued"`, oldest first, for the dashboard's queue panel.
+- `getConversationMessages(conversationId): Promise<ConversationMessagesResult | { error }>` — `{ handoffStatus, estimatedWaitMinutes, messages }`. Backs the polling both the customer chat and the staff chat window use.
+- `staffJoinConversation(conversationId): Promise<StaffJoinResult | { error }>` — staff clicked "Join"; see below.
+- `sendStaffMessage(conversationId, content): Promise<StoredMessage | { error }>` — staff typed a reply while live.
 
 ## `runAndPersistTurn`
 
-1. Loads the conversation's message history and its `contact_confirmed` flag (in parallel).
-2. Calls `runAgentTurn(history, contactConfirmed)` (see [ticketAgent](ticketAgent.md)).
-3. If the result has `pendingContact` (Claude just called `collect_contact_details`): saves the
-   (unconfirmed) name/email/phone/address/postcode/account-holder flag onto the `conversations`
-   row, inserts the deterministic confirmation text as an `assistant` message, and returns it as
-   `reply` — **no further Claude call this turn**.
-4. Otherwise: inserts the real `reply` as an `assistant` message if non-empty, and if a `ticket`
-   was returned, creates it (looking up the conversation's confirmed contact fields, running the
-   duplicate check, inserting the row, marking the conversation `resolved`).
+1. Loads `contact_confirmed`, `handoff_status`, and `estimated_wait_minutes` in a single query
+   (`loadConversationState`).
+2. **If `handoff_status` is `"queued"` or `"live"`: returns immediately with `reply: ""` and no
+   Claude call at all.** The AI is out of the loop entirely once a customer is queued or a staff
+   member has joined — the message the caller already persisted (via `insertUserMessage` or
+   `sendStaffMessage`) just sits in the transcript for whichever side polls it next.
+3. **If contact was just confirmed (`contact_confirmed: true`, `handoff_status: "none"`) and
+   [working hours are on](settings.md):** generates a random `1`–`5` minute wait, updates the
+   conversation to `handoff_status: "queued"` with that estimate and `queued_at`, inserts the
+   deterministic queued-message template as an `assistant` message, and returns it — again, no
+   Claude call. If working hours are off, falls through to the normal flow below unchanged.
+4. Otherwise (today's original behavior): calls `runAgentTurn(history, contactConfirmed)` (see
+   [ticketAgent](ticketAgent.md)). If the result has `pendingContact` (Claude just called
+   `collect_contact_details`): saves the (unconfirmed) contact fields onto the `conversations` row,
+   inserts the deterministic confirmation text as an `assistant` message, returns it as `reply` — no
+   further Claude call this turn. Otherwise: inserts the real `reply` as an `assistant` message if
+   non-empty, and if a `ticket` was returned, creates it via `createTicketForConversation`.
 
 ## Confirm / correct endpoints
 
@@ -41,7 +56,9 @@ Both `confirmPendingContact` and `overwriteContact` end by calling a shared `fin
    the correction path).
 3. Inserts a **synthetic `user`-role message** — `"Yes, that's correct."` for a plain confirm, or
    `"Actually, here are my correct details - Name: ..., Email: ..., Phone: ..., Address: ...,
-   Postcode: ..., Account holder: Yes/No."` for a correction — then calls `runAndPersistTurn`.
+   Postcode: ..., Account holder: Yes/No."` for a correction — then calls `runAndPersistTurn`. This
+   is the exact call where the working-hours queue transition (step 3 above) actually fires, since
+   it's the first `runAndPersistTurn` call after `contact_confirmed` flips to `true`.
 
 **Why a synthetic `user` message, not an assistant one:** an earlier version inserted a
 deterministic assistant "handoff" message here before calling `runAndPersistTurn`. That left the
@@ -52,9 +69,33 @@ conversation alternating properly, and lets Claude's own reply naturally pick ba
 issue the customer already described (the original point of doing a real call here at all, rather
 than another canned message) instead of asking "what can I help with" as if nothing was said.
 
+## `staffJoinConversation`
+
+1. 400s (`{ error }`) unless `handoff_status` is currently `"queued"`.
+2. Sets `handoff_status: "live"` and `staff_joined_at`.
+3. Loads history and calls `draftTicketSummary` (see [ticketAgent](ticketAgent.md)) to produce a
+   draft category/priority/summary/troubleshooting_notes for the staff member to read - purely
+   informational, nothing is persisted as a ticket yet.
+4. Returns `{ draftTicket, messages }` via `getConversationMessages`.
+
+Staff can then message back and forth with the customer via `sendStaffMessage` (400s unless
+`handoff_status` is `"live"`) and both sides poll `getConversationMessages`, until staff calls
+`POST /api/conversations/:id/staff-create-ticket`, which reuses `createTicketForConversation`
+directly with the (possibly edited) draft.
+
+## `loadHistory` and the `staff` role
+
+The history sent to Claude (`loadHistory`, used by both `runAgentTurn` and `draftTicketSummary`)
+maps any `role: "staff"` message to `"assistant"` - Claude's Messages API only accepts `user`/
+`assistant` roles, and a staff reply reads to it as an assistant turn like any other. The `staff`
+role is preserved as-is everywhere messages are read back for display (`getConversationMessages`,
+`GET /api/tickets/:id`), so the frontend can style/label it differently from the AI.
+
 ## Related
 
 - [docs/backend-services/ticketAgent.md](ticketAgent.md)
 - [docs/backend-services/contactValidation.md](contactValidation.md)
 - [docs/backend-services/duplicates.md](duplicates.md)
-- [docs/api-routes/README.md](../api-routes/README.md) — all three routes that use this module
+- [docs/backend-services/settings.md](settings.md) — the `working_hours` flag this module checks.
+- [docs/db-schema/conversations.md](../db-schema/conversations.md) — `handoff_status`/`estimated_wait_minutes`/`queued_at`/`staff_joined_at`.
+- [docs/api-routes/README.md](../api-routes/README.md) — all routes that use this module.

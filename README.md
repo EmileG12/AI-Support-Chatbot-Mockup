@@ -73,6 +73,24 @@ priority filters. Selecting a ticket shows its full chat transcript, troubleshoo
 Category, priority and status can all be overridden here — this is the human-in-the-loop check on
 the AI's classification before a ticket is actioned.
 
+## Working-hours live handoff
+
+A "Working hours" toggle in the staff dashboard header switches the chatbot from fully autonomous
+to a queue-and-handoff model, closer to how a real support desk runs:
+
+1. With it **on**, once a customer's contact details are confirmed they're queued instead of the
+   AI continuing to troubleshoot — a canned message gives a randomized 1–5 minute wait estimate,
+   and further messages just wait in the transcript.
+2. The dashboard's queue panel lists waiting customers; clicking "Join" hands a staff member a live
+   two-way chat with the customer, alongside an AI-drafted ticket summary (category/priority/
+   summary/diagnostics) read off the transcript for context.
+3. Staff can edit that draft and turn it into a real ticket, closing out the chat — reusing the
+   exact same ticket-creation path (duplicate check included) the AI's own `create_ticket` calls use.
+
+With the toggle **off** (the default), behavior is unchanged: the AI handles the whole conversation
+end-to-end as described above. See [docs/backend-services/conversationFlow.md](docs/backend-services/conversationFlow.md)
+for the full state machine.
+
 ## Tests
 
 Each package has its own Vitest suite (see [docs/tests/README.md](docs/tests/README.md)):

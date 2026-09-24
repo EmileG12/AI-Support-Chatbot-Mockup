@@ -248,3 +248,29 @@ export async function runAgentTurn(
 
   return { reply, ticket, pendingContact: null };
 }
+
+/**
+ * Drafts a category/priority/summary from the conversation so far, for a staff
+ * member joining a live handoff to read - not persisted, not a conversational
+ * turn. Forces the create_ticket tool (tool_choice) since we just want the
+ * structured extraction, not a reply.
+ */
+export async function draftTicketSummary(history: MessageParam[]): Promise<CreateTicketArgs | null> {
+  if (history.length === 0) return null;
+
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-5",
+    max_tokens: 512,
+    system: SYSTEM_PROMPT,
+    tools: [CREATE_TICKET_TOOL],
+    tool_choice: { type: "tool", name: "create_ticket" },
+    messages: history,
+  });
+
+  const toolUse = response.content.find(
+    (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
+  );
+  if (!toolUse) return null;
+
+  return toolUse.input as CreateTicketArgs;
+}

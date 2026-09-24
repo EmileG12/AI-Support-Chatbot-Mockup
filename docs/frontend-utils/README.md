@@ -10,3 +10,10 @@ All in `frontend/src/api.ts`. Base URL is `import.meta.env.VITE_API_BASE_URL ?? 
 | [fetchTickets](fetchTickets.md) | List tickets with optional status/category/priority filters |
 | [fetchTicketDetail](fetchTicketDetail.md) | Load one ticket's full record, transcript, and duplicate link |
 | [updateTicket](updateTicket.md) | Override a ticket's category/priority/status |
+| [getSettings](getSettings.md) | Read the `working_hours` toggle |
+| [updateSettings](updateSettings.md) | Set the `working_hours` toggle |
+| [getQueue](getQueue.md) | List conversations waiting for a staff member |
+| [getConversationMessages](getConversationMessages.md) | Poll a conversation's handoff status and transcript |
+| [staffJoin](staffJoin.md) | Staff joins a queued conversation |
+| [sendStaffMessage](sendStaffMessage.md) | Staff sends a message while live with a customer |
+| [createTicketFromDraft](createTicketFromDraft.md) | Staff turns the AI-drafted summary into a real ticket |

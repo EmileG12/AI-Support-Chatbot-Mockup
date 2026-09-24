@@ -44,6 +44,30 @@ services. See [docs/tests/README.md](tests/README.md).
 
 The dashboard is the human-in-the-loop check on the AI's classification: staff can list/filter tickets, open one to see its full transcript and diagnostics, override its category/priority/status, and close out flagged duplicates. See [docs/api-routes/README.md](api-routes/README.md) for the endpoints this uses.
 
+## Data flow: working-hours live handoff
+
+A global `working_hours` flag ([app_settings](db-schema/app_settings.md), toggled from the staff
+dashboard header) changes what happens once a customer's contact is confirmed: instead of Claude
+continuing to troubleshoot, the conversation is queued (`conversations.handoff_status`) with a
+randomized wait estimate, and the AI stops responding to it entirely.
+
+A staff member joins a queued conversation from the dashboard's queue panel (`POST
+.../staff-join`), which marks it `live` and asks Claude for a one-off, non-conversational drafted
+ticket summary (`ticketAgent.draftTicketSummary`) so the staff member has context. From there,
+staff and customer message each other directly (`POST .../staff-message` on the staff side, the
+existing `POST /api/chat` on the customer side — which, once queued/live, just persists the message
+without invoking Claude at all) and both sides **poll** `GET .../messages` rather than getting a
+synchronous reply, since neither side can know when the other will speak next. Staff can then turn
+the (edited) draft into a real ticket via `POST .../staff-create-ticket`, which reuses the exact
+same `createTicketForConversation` path the AI's own `create_ticket` tool call uses.
+
+Deliberately **not** built on Supabase Realtime: that would need an anon-key client on the frontend
+and a public-read RLS policy on `messages`, widening the security surface (see "Known gaps" below)
+for what's ultimately a presentational feature. Plain polling through the already-authenticated
+backend API avoids that trade-off entirely. See
+[docs/backend-services/conversationFlow.md](backend-services/conversationFlow.md) for the full
+state machine.
+
 ## Known gaps
 
 - No authentication on either the chat or the staff dashboard — anyone who can reach the backend can read/write any ticket. Fine for a local mockup; would need auth (and RLS policies scoped to it) before any real deployment.

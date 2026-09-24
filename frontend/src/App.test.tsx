@@ -9,13 +9,15 @@ vi.mock("./api", () => ({
   sendChatMessage: vi.fn(),
   confirmContact: vi.fn(),
   submitContact: vi.fn(),
+  getConversationMessages: vi.fn(),
 }));
 
-import { sendChatMessage, confirmContact, submitContact } from "./api";
+import { sendChatMessage, confirmContact, submitContact, getConversationMessages } from "./api";
 
 const mockSendChatMessage = vi.mocked(sendChatMessage);
 const mockConfirmContact = vi.mocked(confirmContact);
 const mockSubmitContact = vi.mocked(submitContact);
+const mockGetConversationMessages = vi.mocked(getConversationMessages);
 
 const CONTACT = {
   name: "Jane Doe",
@@ -43,6 +45,7 @@ beforeEach(() => {
   mockSendChatMessage.mockReset();
   mockConfirmContact.mockReset();
   mockSubmitContact.mockReset();
+  mockGetConversationMessages.mockReset();
 });
 
 describe("App", () => {
@@ -188,5 +191,63 @@ describe("App", () => {
     expect(await screen.findByText("Updated my contact details.")).toBeInTheDocument();
     expect(await screen.findByText("What can I help you with today?")).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/describe the issue/i)).toBeInTheDocument();
+  });
+
+  it("shows a queued banner with the estimated wait once working hours puts the customer in the queue", async () => {
+    mockSendChatMessage.mockResolvedValueOnce({
+      conversationId: "conv-1",
+      reply: "",
+      ticket: null,
+      pendingContact: CONTACT,
+    });
+    mockConfirmContact.mockResolvedValueOnce({
+      reply: "Thanks! You're in the queue (estimated wait: 3 minutes).",
+      ticket: null,
+      handoffStatus: "queued",
+      estimatedWaitMinutes: 3,
+    });
+    mockGetConversationMessages.mockResolvedValue({
+      handoffStatus: "queued",
+      estimatedWaitMinutes: 3,
+      messages: [{ id: "m1", role: "assistant", content: "Thanks! You're in the queue (estimated wait: 3 minutes)." }],
+    });
+    const user = userEvent.setup();
+    renderApp();
+
+    await sendAMessage(user, "Jane Doe, jane@example.com, 07700 900000");
+    await screen.findByText("jane@example.com");
+    await user.click(screen.getByRole("button", { name: /yes, that's correct/i }));
+
+    const banner = await screen.findByText(/waiting for a team member/i);
+    expect(banner.textContent).toMatch(/estimated wait: 3 minutes/i);
+    // The chat input stays available while queued, so the customer can keep typing.
+    expect(screen.getByPlaceholderText(/describe the issue/i)).toBeInTheDocument();
+  });
+
+  it("polls for and renders a staff member's reply once live", async () => {
+    mockSendChatMessage.mockResolvedValueOnce({
+      conversationId: "conv-1",
+      reply: "",
+      ticket: null,
+      pendingContact: null,
+      handoffStatus: "live",
+      estimatedWaitMinutes: null,
+    });
+    mockGetConversationMessages.mockResolvedValue({
+      handoffStatus: "live",
+      estimatedWaitMinutes: null,
+      messages: [
+        { id: "m1", role: "user", content: "still there?" },
+        { id: "m2", role: "staff", content: "Yes, I'm here now!" },
+      ],
+    });
+    const user = userEvent.setup();
+    renderApp();
+
+    await sendAMessage(user, "still there?");
+
+    expect(await screen.findByText(/you're now chatting with a team member/i)).toBeInTheDocument();
+    expect(await screen.findByText("Yes, I'm here now!")).toBeInTheDocument();
+    expect(screen.getByText("Support agent")).toBeInTheDocument();
   });
 });

@@ -1,9 +1,26 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { fetchTickets, fetchTicketDetail, updateTicket } from "./api";
+import { fetchTickets, fetchTicketDetail, updateTicket, getSettings, updateSettings } from "./api";
 import { CATEGORY_LABELS, PRIORITY_LABELS } from "./TicketCard";
-import type { Ticket, TicketCategory, TicketPriority, TicketStatus, TicketDetail, ChatMessage } from "./types";
+import { QueuePanel } from "./QueuePanel";
+import { StaffChatWindow } from "./StaffChatWindow";
+import type {
+  Ticket,
+  TicketCategory,
+  TicketPriority,
+  TicketStatus,
+  TicketDetail,
+  ChatMessage,
+  DraftTicket,
+  StaffJoinResponse,
+} from "./types";
 import "./StaffDashboard.css";
+
+interface LiveConversation {
+  id: string;
+  draftTicket: DraftTicket | null;
+  messages: ChatMessage[];
+}
 
 const STATUS_OPTIONS: (TicketStatus | "all")[] = ["all", "open", "in_progress", "resolved", "closed"];
 const CATEGORY_OPTIONS: (TicketCategory | "all")[] = ["all", ...(Object.keys(CATEGORY_LABELS) as TicketCategory[])];
@@ -58,6 +75,30 @@ export default function StaffDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [duplicateDetail, setDuplicateDetail] = useState<TicketDetail | null>(null);
   const [isDuplicateLoading, setIsDuplicateLoading] = useState(false);
+  const [workingHours, setWorkingHoursState] = useState(false);
+  const [liveConversation, setLiveConversation] = useState<LiveConversation | null>(null);
+
+  useEffect(() => {
+    getSettings()
+      .then((settings) => setWorkingHoursState(settings.workingHours))
+      .catch((err) => console.error(err));
+  }, []);
+
+  async function handleToggleWorkingHours() {
+    const next = !workingHours;
+    setWorkingHoursState(next);
+    try {
+      await updateSettings({ workingHours: next });
+    } catch (err) {
+      console.error(err);
+      setWorkingHoursState(!next);
+      setError("Failed to update working hours.");
+    }
+  }
+
+  function handleJoined(conversationId: string, result: StaffJoinResponse) {
+    setLiveConversation({ id: conversationId, draftTicket: result.draftTicket, messages: result.messages });
+  }
 
   const loadTickets = useCallback(async () => {
     setIsLoading(true);
@@ -130,10 +171,16 @@ export default function StaffDashboard() {
     <div className="dashboard-shell">
       <header className="dashboard-header">
         <h1>Staff Dashboard</h1>
+        <label className="working-hours-toggle">
+          <input type="checkbox" checked={workingHours} onChange={handleToggleWorkingHours} />
+          Working hours
+        </label>
         <Link className="nav-link" to="/">
           ← Back to chat
         </Link>
       </header>
+
+      <QueuePanel onJoined={handleJoined} />
 
       <div className="dashboard-body">
         <div className="ticket-list-panel">
@@ -320,6 +367,19 @@ export default function StaffDashboard() {
             </div>
           )}
         </div>
+
+        {liveConversation && (
+          <StaffChatWindow
+            conversationId={liveConversation.id}
+            initialDraftTicket={liveConversation.draftTicket}
+            initialMessages={liveConversation.messages}
+            onClose={() => setLiveConversation(null)}
+            onTicketCreated={() => {
+              setLiveConversation(null);
+              loadTickets();
+            }}
+          />
+        )}
       </div>
     </div>
   );
