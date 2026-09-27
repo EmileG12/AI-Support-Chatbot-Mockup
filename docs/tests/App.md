@@ -3,14 +3,19 @@
 `frontend/src/App.test.tsx` — suite: `frontend-unit` (`cd frontend && npm run test`)
 
 Tests [App](../components/App.md). Mocks the `frontend/src/api.ts` boundary (`sendChatMessage`,
-`confirmContact`, `submitContact`, `getConversationMessages`, `getSettings`, `updateSettings`,
-`getQueue`, `staffJoin`, `sendStaffMessage`, `createTicketFromDraft`) — no real network calls.
-[QueuePanel](../components/QueuePanel.md) and [StaffChatWindow](../components/StaffChatWindow.md)
-are rendered for real (not mocked out) as part of `App`'s staff-side panel, so their own API calls
-need mocking here too.
+`createConversation`, `confirmContact`, `submitContact`, `getConversationMessages`, `getSettings`,
+`updateSettings`, `getQueue`, `staffJoin`, `sendStaffMessage`, `createTicketFromDraft`) — no real
+network calls. [QueuePanel](../components/QueuePanel.md), [StaffChatWindow](../components/StaffChatWindow.md),
+and [StaffLeadChatWindow](../components/StaffLeadChatWindow.md) are rendered for real (not mocked
+out) as part of `App`'s staff-side panel, so their own API calls need mocking here too. The shared
+`sendAMessage` test helper picks "Customer Support" via [ModeSelectCard](../components/ModeSelectCard.md)
+first (if it's still showing) before typing/sending, since the chat input doesn't exist until a mode is chosen.
 
 ## Covers
 
+- The mode select card shows before any conversation starts, with no chat input yet.
+- Picking "Customer Sales" calls `createConversation("sales")` and shows the sales-specific welcome message.
+- When a sales conversation's response includes a `lead`, a [LeadCard](../components/LeadCard.md) is rendered with it.
 - Typing a message and sending it renders the assistant's reply from the (mocked) response.
 - When the response includes a `ticket`, a [TicketCard](../components/TicketCard.md) is rendered with it.
 - When `sendChatMessage` rejects, the error banner is shown.
@@ -22,11 +27,16 @@ need mocking here too.
   (asserted against the banner element's own `textContent`, since the reply text can legitimately
   contain the same "estimated wait" phrase), and the chat input stays available.
 - When `handoffStatus` is `"live"`, the live banner shows and the (mocked) immediate poll from
-  `getConversationMessages` renders a `role: "staff"` reply labeled "Support agent".
+  `getConversationMessages` renders a `role: "staff"` reply labeled "Support agent" for a support
+  conversation, or "Sales agent" for a sales one (the label reads the customer's own `mode` state,
+  not anything on the message itself).
 - Toggling the "Working hours" checkbox calls `updateSettings({ workingHours: true })`.
 - Clicking "Join" on a [QueuePanel](../components/QueuePanel.md) entry (rendered in the staff-side
   panel next to the customer's own chat) calls `staffJoin` and opens
   [StaffChatWindow](../components/StaffChatWindow.md) with the returned draft summary, with the
   customer's own chat input still on screen alongside it.
+- Joining a **sales** queue entry (`staffJoin` resolving `mode: "sales"` with a `draftLead`) opens
+  [StaffLeadChatWindow](../components/StaffLeadChatWindow.md) instead, showing its "Create lead"
+  button rather than StaffChatWindow's ticket fields.
 
 Rendered inside a `MemoryRouter` since `App` renders a `react-router-dom` `Link` to `/staff`.

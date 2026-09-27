@@ -58,7 +58,12 @@ export function QueuePanel({ onJoined }: QueuePanelProps) {
           {entries.map((entry) => (
             <li key={entry.id} className="queue-entry">
               <div className="queue-entry-info">
-                <span className="queue-entry-name">{entry.customer_name ?? "Unknown customer"}</span>
+                <span className="queue-entry-name">
+                  {entry.customer_name ?? "Unknown customer"}
+                  <span className={`queue-entry-mode queue-entry-mode-${entry.mode}`}>
+                    {entry.mode === "sales" ? "Sales" : "Support"}
+                  </span>
+                </span>
                 <span className="queue-entry-wait">
                   Est. wait: {entry.estimated_wait_minutes ?? "?"} min
                 </span>

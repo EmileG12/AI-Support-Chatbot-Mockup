@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { fetchTickets, fetchTicketDetail, updateTicket } from "./api";
+import { LogoutButton } from "./LogoutButton";
 import { CATEGORY_LABELS, PRIORITY_LABELS } from "./TicketCard";
 import type { Ticket, TicketCategory, TicketPriority, TicketStatus, TicketDetail, ChatMessage } from "./types";
 import "./StaffDashboard.css";
@@ -135,10 +136,16 @@ export default function StaffDashboard() {
   return (
     <div className="dashboard-shell">
       <header className="dashboard-header">
-        <h1>Staff Dashboard</h1>
-        <Link className="nav-link" to="/">
-          ← Back to chat
-        </Link>
+        <h1>Customer Support Staff View</h1>
+        <div className="nav-links">
+          <Link className="nav-link" to="/staff/sales">
+            Customer Sales Staff View →
+          </Link>
+          <Link className="nav-link" to="/">
+            ← Back to chat
+          </Link>
+          <LogoutButton />
+        </div>
       </header>
 
       <div className="dashboard-body">

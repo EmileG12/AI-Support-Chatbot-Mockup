@@ -17,20 +17,22 @@ No body.
 2. Marks `contact_confirmed = true`.
 3. Inserts a synthetic `"Yes, that's correct."` **user** message (not an assistant one — see
    [conversationFlow](../backend-services/conversationFlow.md) for why that matters).
-4. Calls `runAndPersistTurn` and returns its `reply`/`ticket` — a real Claude call, so if the
+4. Calls `runAndPersistTurn` and returns its `reply`/`ticket`/`lead` — a real Claude call, so if the
    customer already described their issue before confirming contact, this reply continues from it
-   rather than asking "what can I help with" as if nothing was said.
+   rather than asking "what can I help with" as if nothing was said. For a sales conversation this
+   is typically the call that produces the lead.
 
 ## Response
 
 ```ts
-{ reply: string; ticket: Ticket | null; handoffStatus: "none" | "queued" | "live"; estimatedWaitMinutes: number | null }
+{ reply: string; ticket: Ticket | null; lead: Lead | null; handoffStatus: "none" | "queued" | "live"; estimatedWaitMinutes: number | null }
 ```
 
 If [working hours are on](../backend-services/settings.md), this is the call where the queue
 transition actually fires — `handoffStatus` comes back `"queued"` and `reply` is the deterministic
 queued-message template rather than a real Claude reply. See
-[conversationFlow](../backend-services/conversationFlow.md).
+[conversationFlow](../backend-services/conversationFlow.md). Support-only - sales conversations
+never queue.
 
 `400` with `{ error: string }` (conversation not found / already confirmed / invalid stored data),
 `500` on other failures.

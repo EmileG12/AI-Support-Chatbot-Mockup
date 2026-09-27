@@ -15,6 +15,7 @@ No body.
 {
   queue: {
     id: string;
+    mode: "support" | "sales";
     customer_name: string | null;
     queued_at: string | null;
     estimated_wait_minutes: number | null;
@@ -22,8 +23,10 @@ No body.
 }
 ```
 
-Conversations with `handoff_status: "queued"`, ordered oldest-queued-first. `500` with
-`{ error: string }` on failure.
+Conversations with `handoff_status: "queued"`, ordered oldest-queued-first - support and sales
+conversations mixed together in one queue, distinguished by `mode` (defaults to `"support"` if the
+column is somehow null). [QueuePanel](../components/QueuePanel.md) badges each entry by `mode`.
+`500` with `{ error: string }` on failure.
 
 ## Related
 

@@ -20,12 +20,15 @@ interface QueuePanelProps {
 ## Behavior
 
 - Polls [getQueue](../frontend-utils/getQueue.md) every 3s (plus an immediate fetch on mount).
-  Shows "No customers waiting." when the list is empty, otherwise each entry's customer name and
-  estimated wait.
+  Shows "No customers waiting." when the list is empty, otherwise each entry's customer name,
+  estimated wait, and a small "Support"/"Sales" badge (from `entry.mode`) - the queue mixes both
+  kinds of conversation together.
 - Clicking "Join" calls [staffJoin](../frontend-utils/staffJoin.md) for that conversation (button
   shows "Joining…" and is disabled while in flight) and, on success, calls `onJoined` with the
-  conversation id and the `{ draftTicket, messages }` result — [App](App.md) owns what happens next
-  (opening [StaffChatWindow](StaffChatWindow.md)), this component doesn't render the chat itself.
+  conversation id and the `{ mode, draftTicket, draftLead, messages }` result — [App](App.md) owns
+  what happens next (opening [StaffChatWindow](StaffChatWindow.md) or
+  [StaffLeadChatWindow](StaffLeadChatWindow.md) based on `mode`), this component doesn't render the
+  chat itself.
 - A failed join shows an inline error banner.
 
 ## Related

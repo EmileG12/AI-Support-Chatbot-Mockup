@@ -37,6 +37,12 @@ body {
   font-size: 0.9rem;
 }
 
+.nav-links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .nav-link {
   display: inline-block;
   margin-bottom: 16px;
@@ -47,6 +53,14 @@ body {
 
 .nav-link:hover {
   text-decoration: underline;
+}
+
+.logout-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .app-body {
@@ -137,6 +151,24 @@ body {
 
 .queue-entry-name {
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.queue-entry-mode {
+  font-weight: 600;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #f0f0f4;
+  color: var(--text-muted);
+}
+
+.queue-entry-mode-sales {
+  background: #ede9fe;
+  color: var(--brand-dark);
 }
 
 .queue-entry-wait {
@@ -534,6 +566,75 @@ body {
   background: #c9c9d4;
   color: white;
   cursor: not-allowed;
+}
+
+.mode-select-card {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.mode-select-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mode-select-actions button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  background: var(--brand);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.mode-select-actions button.secondary {
+  background: #f0f0f4;
+  color: var(--text);
+}
+
+.mode-select-actions button:disabled {
+  background: #c9c9d4;
+  color: white;
+  cursor: not-allowed;
+}
+
+.lead-card {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--brand);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #faf9ff;
+}
+
+.lead-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.lead-id {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.lead-category-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: white;
+  background: var(--brand);
+}
+
+.lead-plan {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
 }
 
 .contact-form {

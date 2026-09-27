@@ -1,10 +1,16 @@
 # API routes
 
-All in `backend/src/app.ts`. No authentication (see [docs/architecture.md](../architecture.md#known-gaps)).
+All in `backend/src/app.ts`. Every route except `POST /api/login`, `GET /api/me`, and `GET
+/api/health` requires a valid session cookie (single shared account — see
+[auth](../backend-services/auth.md)).
 
 | Route | Purpose |
 |---|---|
-| [POST /api/chat](post-api-chat.md) | Send a chat message, get the agent's reply and any newly created ticket |
+| [POST /api/login](post-login.md) | Log in with the shared username/password, sets the session cookie |
+| [POST /api/logout](post-logout.md) | Clear the session cookie |
+| [GET /api/me](get-me.md) | Check whether the current session cookie is valid |
+| [POST /api/conversations](post-api-conversations.md) | Start a conversation with a chosen mode ("support" or "sales"), before any message is sent |
+| [POST /api/chat](post-api-chat.md) | Send a chat message, get the agent's reply and any newly created ticket (support) or lead (sales) |
 | [POST /api/conversations/:id/confirm-contact](post-confirm-contact.md) | Confirm the auto-detected contact details |
 | [PATCH /api/conversations/:id/contact](patch-conversation-contact.md) | Submit corrected contact details |
 | [GET /api/tickets](get-api-tickets.md) | List tickets, filterable by status/category/priority |
@@ -18,4 +24,5 @@ All in `backend/src/app.ts`. No authentication (see [docs/architecture.md](../ar
 | [POST /api/conversations/:id/staff-message](post-staff-message.md) | Staff sends a message while live with a customer |
 | [POST /api/conversations/:id/draft-resolution](post-draft-resolution.md) | AI-draft a resolution summary from the full conversation |
 | [POST /api/conversations/:id/staff-create-ticket](post-staff-create-ticket.md) | Staff turns the drafted summary (optionally resolved, with resolution notes) into a real ticket |
+| [POST /api/conversations/:id/staff-create-lead](post-staff-create-lead.md) | Staff turns the drafted lead summary into a real lead (sales counterpart to staff-create-ticket) |
 | `GET /api/health` | `{ ok: true }` liveness check (not separately documented) |

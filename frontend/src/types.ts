@@ -52,10 +52,32 @@ export interface ChatMessage {
 
 export type HandoffStatus = "none" | "queued" | "live";
 
+export type ChatMode = "support" | "sales";
+export type SalesCategory = "broadband" | "mobile";
+export type LeadStatus = "new" | "contacted" | "closed";
+
+export interface Lead {
+  id: string;
+  conversation_id: string;
+  category: SalesCategory;
+  plan_interested?: string | null;
+  summary: string;
+  status: LeadStatus;
+  created_at: string;
+  raw_message: string;
+  customer_name?: string | null;
+  customer_email?: string | null;
+  customer_phone?: string | null;
+  customer_address?: string | null;
+  customer_postcode?: string | null;
+  customer_is_account_holder?: boolean | null;
+}
+
 export interface ChatResponse {
   conversationId: string;
   reply: string;
   ticket: Ticket | null;
+  lead?: Lead | null;
   pendingContact: ContactDetails | null;
   handoffStatus?: HandoffStatus;
   estimatedWaitMinutes?: number | null;
@@ -64,6 +86,7 @@ export interface ChatResponse {
 export interface ContactActionResponse {
   reply: string;
   ticket: Ticket | null;
+  lead?: Lead | null;
   handoffStatus?: HandoffStatus;
   estimatedWaitMinutes?: number | null;
 }
@@ -74,12 +97,18 @@ export interface TicketDetail {
   duplicateOf: { id: string; summary: string } | null;
 }
 
+export interface LeadDetail {
+  lead: Lead;
+  messages: ChatMessage[];
+}
+
 export interface Settings {
   workingHours: boolean;
 }
 
 export interface QueueEntry {
   id: string;
+  mode: ChatMode;
   customer_name: string | null;
   queued_at: string | null;
   estimated_wait_minutes: number | null;
@@ -94,15 +123,26 @@ export interface DraftTicket {
   troubleshooting_notes?: string;
 }
 
+/** Sales-mode counterpart to DraftTicket - the AI's draft lead for a staff member to read and edit. */
+export interface DraftLead {
+  category: SalesCategory;
+  plan_interested?: string;
+  summary: string;
+  raw_message: string;
+}
+
 export interface ConversationMessagesResponse {
   handoffStatus: HandoffStatus;
   estimatedWaitMinutes: number | null;
   draftTicket: DraftTicket | null;
+  draftLead: DraftLead | null;
   messages: ChatMessage[];
 }
 
 export interface StaffJoinResponse {
+  mode: ChatMode;
   draftTicket: DraftTicket | null;
+  draftLead: DraftLead | null;
   messages: ChatMessage[];
 }
 

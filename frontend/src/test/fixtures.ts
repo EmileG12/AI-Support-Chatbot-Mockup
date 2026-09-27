@@ -1,4 +1,4 @@
-import type { Ticket } from "../types";
+import type { Lead, Ticket } from "../types";
 
 export function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
   return {
@@ -10,6 +10,20 @@ export function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
     status: "open",
     created_at: "2026-09-23T12:00:00Z",
     raw_message: "my broadband is down",
+    ...overrides,
+  };
+}
+
+export function makeLead(overrides: Partial<Lead> = {}): Lead {
+  return {
+    id: "66666666-7777-8888-9999-000000000000",
+    conversation_id: "conv-1",
+    category: "broadband",
+    plan_interested: "Full Fibre Broadband 220",
+    summary: "Customer wants to sign up for Full Fibre 220.",
+    status: "new",
+    created_at: "2026-09-25T12:00:00Z",
+    raw_message: "I'll take the 220 plan",
     ...overrides,
   };
 }

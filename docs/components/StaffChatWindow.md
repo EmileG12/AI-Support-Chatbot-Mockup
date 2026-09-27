@@ -4,9 +4,11 @@
 
 ## Purpose
 
-The panel a staff member sees after joining a queued conversation from [QueuePanel](QueuePanel.md):
-an editable AI-drafted ticket summary, the live transcript, a reply box, and "Create ticket"/"Issue
-resolved" actions.
+The panel a staff member sees after joining a queued **support** conversation from
+[QueuePanel](QueuePanel.md): an editable AI-drafted ticket summary, the live transcript, a reply
+box, and "Create ticket"/"Issue resolved" actions. See
+[StaffLeadChatWindow](StaffLeadChatWindow.md) for the sales counterpart, rendered instead for a
+sales conversation - [App](App.md) picks between the two by `mode`.
 
 ## Props
 

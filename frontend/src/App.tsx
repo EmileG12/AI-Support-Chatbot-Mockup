@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import {
   sendChatMessage,
+  createConversation,
   confirmContact,
   submitContact,
   getConversationMessages,
@@ -9,16 +10,23 @@ import {
   updateSettings,
 } from "./api";
 import { TicketCard } from "./TicketCard";
+import { LeadCard } from "./LeadCard";
+import { ModeSelectCard } from "./ModeSelectCard";
 import { ContactConfirmCard } from "./ContactConfirmCard";
 import { ContactForm } from "./ContactForm";
 import { QueuePanel } from "./QueuePanel";
 import { StaffChatWindow } from "./StaffChatWindow";
+import { StaffLeadChatWindow } from "./StaffLeadChatWindow";
+import { LogoutButton } from "./LogoutButton";
 import type {
   ChatMessage,
+  ChatMode,
   ContactActionResponse,
   ContactDetails,
+  DraftLead,
   DraftTicket,
   HandoffStatus,
+  Lead,
   StaffJoinResponse,
   Ticket,
 } from "./types";
@@ -28,7 +36,9 @@ const POLL_INTERVAL_MS = 2500;
 
 interface LiveConversation {
   id: string;
+  mode: ChatMode;
   draftTicket: DraftTicket | null;
+  draftLead: DraftLead | null;
   messages: ChatMessage[];
 }
 
@@ -36,17 +46,33 @@ function makeId() {
   return crypto.randomUUID();
 }
 
-const WELCOME_MESSAGE: ChatMessage = {
-  id: "welcome",
+const GREETING_MESSAGE: ChatMessage = {
+  id: "greeting",
+  role: "assistant",
+  content: "Hi, welcome to Fenmoor Telecom! Are you here about an existing issue, or interested in our plans?",
+};
+
+const SUPPORT_WELCOME_MESSAGE: ChatMessage = {
+  id: "welcome-support",
   role: "assistant",
   content:
-    "Hi, I'm the Fenmoor Telecom support assistant. Before we get started, could I take your name, email address, phone number, full address, postcode, and confirm whether you're the account holder, so our team can follow up with you after this chat?",
+    "Before we get started, could I take your name, email address, phone number, full address, postcode, and confirm whether you're the account holder, so our team can follow up with you after this chat?",
+};
+
+const SALES_WELCOME_MESSAGE: ChatMessage = {
+  id: "welcome-sales",
+  role: "assistant",
+  content:
+    "Great — are you looking for broadband or mobile? Tell me a bit about what you need and I'll help find the right plan.",
 };
 
 function App() {
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  const [messages, setMessages] = useState<ChatMessage[]>([GREETING_MESSAGE]);
+  const [mode, setMode] = useState<ChatMode | null>(null);
+  const [isSelectingMode, setIsSelectingMode] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [lead, setLead] = useState<Lead | null>(null);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +110,30 @@ function App() {
   }
 
   function handleJoined(conversationId: string, result: StaffJoinResponse) {
-    setLiveConversation({ id: conversationId, draftTicket: result.draftTicket, messages: result.messages });
+    setLiveConversation({
+      id: conversationId,
+      mode: result.mode,
+      draftTicket: result.draftTicket,
+      draftLead: result.draftLead,
+      messages: result.messages,
+    });
+  }
+
+  async function handleSelectMode(selected: ChatMode) {
+    setIsSelectingMode(true);
+    setError(null);
+    try {
+      const { conversationId: newConversationId } = await createConversation(selected);
+      setConversationId(newConversationId);
+      setMode(selected);
+      const welcome = selected === "support" ? SUPPORT_WELCOME_MESSAGE : SALES_WELCOME_MESSAGE;
+      setMessages((prev) => [...prev, welcome]);
+    } catch (err) {
+      console.error(err);
+      setError("Something went wrong starting the chat. Please try again.");
+    } finally {
+      setIsSelectingMode(false);
+    }
   }
 
   useEffect(() => {
@@ -104,7 +153,7 @@ function App() {
       try {
         const result = await getConversationMessages(conversationId!);
         if (cancelled) return;
-        setMessages([WELCOME_MESSAGE, ...result.messages]);
+        setMessages([GREETING_MESSAGE, ...result.messages]);
         setHandoffStatus(result.handoffStatus);
         setEstimatedWaitMinutes(result.estimatedWaitMinutes);
       } catch (err) {
@@ -123,7 +172,7 @@ function App() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const trimmed = input.trim();
-    if (!trimmed || isSending) return;
+    if (!trimmed || isSending || !conversationId) return;
 
     const userMessage: ChatMessage = { id: makeId(), role: "user", content: trimmed };
     setMessages((prev) => [...prev, userMessage]);
@@ -142,6 +191,9 @@ function App() {
       }
       if (response.ticket) {
         setTicket(response.ticket);
+      }
+      if (response.lead) {
+        setLead(response.lead);
       }
       if (response.pendingContact) {
         setPendingContact(response.pendingContact);
@@ -166,6 +218,9 @@ function App() {
     ]);
     if (result.ticket) {
       setTicket(result.ticket);
+    }
+    if (result.lead) {
+      setLead(result.lead);
     }
     setPendingContact(null);
     setIsEditingContact(false);
@@ -216,9 +271,15 @@ function App() {
           <input type="checkbox" checked={workingHours} onChange={handleToggleWorkingHours} />
           Working hours
         </label>
-        <Link className="nav-link" to="/staff">
-          Staff view →
-        </Link>
+        <div className="nav-links">
+          <Link className="nav-link" to="/staff">
+            Customer Support Staff View →
+          </Link>
+          <Link className="nav-link" to="/staff/sales">
+            Customer Sales Staff View →
+          </Link>
+          <LogoutButton />
+        </div>
       </header>
 
       <div className="app-body">
@@ -226,7 +287,9 @@ function App() {
           <div className="message-list">
             {messages.map((m) => (
               <div key={m.id} className={`message message-${m.role}`}>
-                {m.role === "staff" && <span className="message-author">Support agent</span>}
+                {m.role === "staff" && (
+                  <span className="message-author">{mode === "sales" ? "Sales agent" : "Support agent"}</span>
+                )}
                 {m.content}
               </div>
             ))}
@@ -252,9 +315,19 @@ function App() {
             </div>
           )}
 
+          {lead && (
+            <div className="ticket-panel">
+              <LeadCard lead={lead} />
+            </div>
+          )}
+
           {error && <div className="error-banner">{error}</div>}
 
-          {awaitingContact && pendingContact && !isEditingContact && (
+          {mode === null && (
+            <ModeSelectCard onSelect={handleSelectMode} isSubmitting={isSelectingMode} />
+          )}
+
+          {mode !== null && awaitingContact && pendingContact && !isEditingContact && (
             <div className="contact-panel">
               <ContactConfirmCard
                 contact={pendingContact}
@@ -265,7 +338,7 @@ function App() {
             </div>
           )}
 
-          {awaitingContact && pendingContact && isEditingContact && (
+          {mode !== null && awaitingContact && pendingContact && isEditingContact && (
             <div className="contact-panel">
               <ContactForm
                 initial={pendingContact}
@@ -280,7 +353,7 @@ function App() {
             </div>
           )}
 
-          {!awaitingContact && (
+          {mode !== null && !awaitingContact && (
             <form className="chat-input-row" onSubmit={handleSubmit}>
               <input
                 type="text"
@@ -297,7 +370,18 @@ function App() {
         </main>
 
         <div className="staff-panel">
-          {liveConversation ? (
+          {liveConversation?.mode === "sales" ? (
+            <StaffLeadChatWindow
+              conversationId={liveConversation.id}
+              initialDraftLead={liveConversation.draftLead}
+              initialMessages={liveConversation.messages}
+              onClose={() => setLiveConversation(null)}
+              onLeadCreated={() => {
+                // The panel shows its own "Lead #... created." confirmation
+                // and "Close" button - nothing more to do here.
+              }}
+            />
+          ) : liveConversation ? (
             <StaffChatWindow
               conversationId={liveConversation.id}
               initialDraftTicket={liveConversation.draftTicket}

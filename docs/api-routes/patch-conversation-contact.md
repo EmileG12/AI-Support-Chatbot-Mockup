@@ -20,13 +20,13 @@ submitted the [ContactForm](../components/ContactForm.md).
    `contact_confirmed = true`.
 3. Inserts a synthetic **user** message: `"Actually, here are my correct details - Name: ...,
    Email: ..., Phone: ..., Address: ..., Postcode: ..., Account holder: Yes/No."`.
-4. Calls `runAndPersistTurn` and returns its `reply`/`ticket`, same as the confirm endpoint — one
-   real Claude call, no separate re-confirmation round.
+4. Calls `runAndPersistTurn` and returns its `reply`/`ticket`/`lead`, same as the confirm endpoint —
+   one real Claude call, no separate re-confirmation round.
 
 ## Response
 
 ```ts
-{ reply: string; ticket: Ticket | null; handoffStatus: "none" | "queued" | "live"; estimatedWaitMinutes: number | null }
+{ reply: string; ticket: Ticket | null; lead: Lead | null; handoffStatus: "none" | "queued" | "live"; estimatedWaitMinutes: number | null }
 ```
 
 If [working hours are on](../backend-services/settings.md), this is the call where the queue

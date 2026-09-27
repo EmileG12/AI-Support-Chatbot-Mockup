@@ -40,6 +40,7 @@ beforeEach(() => {
     handoffStatus: "live",
     estimatedWaitMinutes: null,
     draftTicket: null,
+    draftLead: null,
     messages: MESSAGES,
   });
   mockSendStaffMessage.mockReset();
@@ -200,6 +201,7 @@ describe("StaffChatWindow", () => {
       handoffStatus: "live",
       estimatedWaitMinutes: null,
       draftTicket: { ...DRAFT, summary: "Broadband outage - now also affecting the landline." },
+      draftLead: null,
       messages: MESSAGES,
     });
     render(
@@ -222,7 +224,13 @@ describe("StaffChatWindow", () => {
     // Immediate poll on mount: nothing new yet.
     mockGetConversationMessages
       .mockReset()
-      .mockResolvedValueOnce({ handoffStatus: "live", estimatedWaitMinutes: null, draftTicket: null, messages: MESSAGES });
+      .mockResolvedValueOnce({
+        handoffStatus: "live",
+        estimatedWaitMinutes: null,
+        draftTicket: null,
+        draftLead: null,
+        messages: MESSAGES,
+      });
     render(
       <StaffChatWindow
         conversationId="c1"
@@ -245,6 +253,7 @@ describe("StaffChatWindow", () => {
       handoffStatus: "live",
       estimatedWaitMinutes: null,
       draftTicket: { ...DRAFT, summary: "Broadband outage - now also affecting the landline." },
+      draftLead: null,
       messages: MESSAGES,
     });
 
@@ -265,7 +274,13 @@ describe("StaffChatWindow", () => {
   it("keeps a staff edit when the AI suggestion is dismissed", async () => {
     mockGetConversationMessages
       .mockReset()
-      .mockResolvedValueOnce({ handoffStatus: "live", estimatedWaitMinutes: null, draftTicket: null, messages: MESSAGES });
+      .mockResolvedValueOnce({
+        handoffStatus: "live",
+        estimatedWaitMinutes: null,
+        draftTicket: null,
+        draftLead: null,
+        messages: MESSAGES,
+      });
     render(
       <StaffChatWindow
         conversationId="c1"
@@ -285,6 +300,7 @@ describe("StaffChatWindow", () => {
       handoffStatus: "live",
       estimatedWaitMinutes: null,
       draftTicket: { ...DRAFT, summary: "Broadband outage - now also affecting the landline." },
+      draftLead: null,
       messages: MESSAGES,
     });
     await screen.findByText(/AI suggests an update/i, {}, { timeout: 3000 });

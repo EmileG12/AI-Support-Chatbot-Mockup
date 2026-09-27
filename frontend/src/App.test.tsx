@@ -3,10 +3,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import App from "./App";
-import { makeTicket } from "./test/fixtures";
+import { makeTicket, makeLead } from "./test/fixtures";
 
 vi.mock("./api", () => ({
   sendChatMessage: vi.fn(),
+  createConversation: vi.fn(),
   confirmContact: vi.fn(),
   submitContact: vi.fn(),
   getConversationMessages: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock("./api", () => ({
 
 import {
   sendChatMessage,
+  createConversation,
   confirmContact,
   submitContact,
   getConversationMessages,
@@ -30,6 +32,7 @@ import {
 } from "./api";
 
 const mockSendChatMessage = vi.mocked(sendChatMessage);
+const mockCreateConversation = vi.mocked(createConversation);
 const mockConfirmContact = vi.mocked(confirmContact);
 const mockSubmitContact = vi.mocked(submitContact);
 const mockGetConversationMessages = vi.mocked(getConversationMessages);
@@ -55,13 +58,22 @@ function renderApp() {
   );
 }
 
+async function selectSupportMode(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole("button", { name: /customer support/i }));
+  await screen.findByPlaceholderText(/describe the issue/i);
+}
+
 async function sendAMessage(user: ReturnType<typeof userEvent.setup>, text = "hello") {
+  if (screen.queryByRole("button", { name: /customer support/i })) {
+    await selectSupportMode(user);
+  }
   await user.type(screen.getByPlaceholderText(/describe the issue/i), text);
   await user.click(screen.getByRole("button", { name: /send/i }));
 }
 
 beforeEach(() => {
   mockSendChatMessage.mockReset();
+  mockCreateConversation.mockReset().mockResolvedValue({ conversationId: "conv-1" });
   mockConfirmContact.mockReset();
   mockSubmitContact.mockReset();
   mockGetConversationMessages.mockReset();
@@ -72,6 +84,57 @@ beforeEach(() => {
 });
 
 describe("App", () => {
+  it("shows links to both staff views", async () => {
+    renderApp();
+
+    expect(await screen.findByRole("link", { name: /customer support staff view/i })).toHaveAttribute(
+      "href",
+      "/staff"
+    );
+    expect(screen.getByRole("link", { name: /customer sales staff view/i })).toHaveAttribute(
+      "href",
+      "/staff/sales"
+    );
+  });
+
+  it("shows the mode select card before any conversation starts, with no chat input yet", async () => {
+    renderApp();
+
+    expect(await screen.findByRole("button", { name: /customer support/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /customer sales/i })).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/describe the issue/i)).not.toBeInTheDocument();
+  });
+
+  it("picking Customer Sales creates a sales conversation and shows the sales welcome message", async () => {
+    mockCreateConversation.mockResolvedValueOnce({ conversationId: "sales-conv-1" });
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: /customer sales/i }));
+
+    expect(mockCreateConversation).toHaveBeenCalledWith("sales");
+    expect(await screen.findByText(/are you looking for broadband or mobile/i)).toBeInTheDocument();
+  });
+
+  it("renders a LeadCard when a sales conversation's response includes a lead", async () => {
+    mockCreateConversation.mockResolvedValueOnce({ conversationId: "sales-conv-1" });
+    mockSendChatMessage.mockResolvedValueOnce({
+      conversationId: "sales-conv-1",
+      reply: "Great, we've logged your interest and someone will be in touch.",
+      ticket: null,
+      lead: makeLead(),
+      pendingContact: null,
+    });
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: /customer sales/i }));
+    await user.type(await screen.findByPlaceholderText(/describe the issue/i), "sign me up for the 220 plan");
+    await user.click(screen.getByRole("button", { name: /send/i }));
+
+    expect(await screen.findByText("Customer wants to sign up for Full Fibre 220.")).toBeInTheDocument();
+  });
+
   it("sends a message and renders the assistant's reply", async () => {
     mockSendChatMessage.mockResolvedValueOnce({
       conversationId: "conv-1",
@@ -85,7 +148,7 @@ describe("App", () => {
     await sendAMessage(user, "my broadband is slow");
 
     expect(await screen.findByText("Have you run a wired speed test?")).toBeInTheDocument();
-    expect(mockSendChatMessage).toHaveBeenCalledWith("my broadband is slow", null);
+    expect(mockSendChatMessage).toHaveBeenCalledWith("my broadband is slow", "conv-1");
   });
 
   it("renders a TicketCard when the response includes a ticket", async () => {
@@ -233,6 +296,7 @@ describe("App", () => {
       handoffStatus: "queued",
       estimatedWaitMinutes: 3,
       draftTicket: null,
+      draftLead: null,
       messages: [{ id: "m1", role: "assistant", content: "Thanks! You're in the queue (estimated wait: 3 minutes)." }],
     });
     const user = userEvent.setup();
@@ -261,6 +325,7 @@ describe("App", () => {
       handoffStatus: "live",
       estimatedWaitMinutes: null,
       draftTicket: null,
+      draftLead: null,
       messages: [
         { id: "m1", role: "user", content: "still there?" },
         { id: "m2", role: "staff", content: "Yes, I'm here now!" },
@@ -274,6 +339,37 @@ describe("App", () => {
     expect(await screen.findByText(/you're now chatting with a team member/i)).toBeInTheDocument();
     expect(await screen.findByText("Yes, I'm here now!")).toBeInTheDocument();
     expect(screen.getByText("Support agent")).toBeInTheDocument();
+  });
+
+  it("labels a live staff reply 'Sales agent' during a sales handoff", async () => {
+    mockSendChatMessage.mockResolvedValueOnce({
+      conversationId: "conv-1",
+      reply: "",
+      ticket: null,
+      lead: null,
+      pendingContact: null,
+      handoffStatus: "live",
+      estimatedWaitMinutes: null,
+    });
+    mockGetConversationMessages.mockResolvedValue({
+      handoffStatus: "live",
+      estimatedWaitMinutes: null,
+      draftTicket: null,
+      draftLead: null,
+      messages: [
+        { id: "m1", role: "user", content: "I want a mobile plan" },
+        { id: "m2", role: "staff", content: "Hi, I can help with that!" },
+      ],
+    });
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(await screen.findByRole("button", { name: /customer sales/i }));
+    await user.type(await screen.findByPlaceholderText(/describe the issue/i), "I want a mobile plan");
+    await user.click(screen.getByRole("button", { name: /send/i }));
+
+    expect(await screen.findByText("Hi, I can help with that!")).toBeInTheDocument();
+    expect(screen.getByText("Sales agent")).toBeInTheDocument();
   });
 
   it("toggling 'Working hours' calls updateSettings", async () => {
@@ -292,19 +388,22 @@ describe("App", () => {
 
   it("joining a queued conversation from the staff panel opens the live staff chat window, next to the customer's own chat", async () => {
     mockGetQueue.mockResolvedValueOnce([
-      { id: "c1", customer_name: "Jane Doe", queued_at: "2026-01-01T00:00:00Z", estimated_wait_minutes: 3 },
+      { id: "c1", mode: "support", customer_name: "Jane Doe", queued_at: "2026-01-01T00:00:00Z", estimated_wait_minutes: 3 },
     ]);
     mockStaffJoin.mockResolvedValueOnce({
+      mode: "support",
       draftTicket: {
         category: "broadband_fault",
         priority: "high",
         summary: "Broadband outage reported.",
         raw_message: "my broadband is down",
       },
+      draftLead: null,
       messages: [{ id: "m1", role: "user", content: "my broadband is down" }],
     });
     const user = userEvent.setup();
     renderApp();
+    await selectSupportMode(user);
 
     await user.click(await screen.findByRole("button", { name: /join/i }));
 
@@ -313,5 +412,31 @@ describe("App", () => {
     expect(screen.getByDisplayValue("Broadband outage reported.")).toBeInTheDocument();
     // Still on the same page as the customer's own chat input - side by side, not a separate view.
     expect(screen.getByPlaceholderText(/describe the issue/i)).toBeInTheDocument();
+  });
+
+  it("joining a queued SALES conversation opens the live staff LEAD chat window instead", async () => {
+    mockGetQueue.mockResolvedValueOnce([
+      { id: "c2", mode: "sales", customer_name: "John Smith", queued_at: "2026-01-01T00:00:00Z", estimated_wait_minutes: 5 },
+    ]);
+    mockStaffJoin.mockResolvedValueOnce({
+      mode: "sales",
+      draftTicket: null,
+      draftLead: {
+        category: "broadband",
+        summary: "Wants a faster broadband plan.",
+        raw_message: "I want faster broadband",
+      },
+      messages: [{ id: "m1", role: "user", content: "I want faster broadband" }],
+    });
+    const user = userEvent.setup();
+    renderApp();
+    await selectSupportMode(user);
+
+    await user.click(await screen.findByRole("button", { name: /join/i }));
+
+    expect(mockStaffJoin).toHaveBeenCalledWith("c2");
+    expect(await screen.findByText("Live chat")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Wants a faster broadband plan.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /create lead/i })).toBeInTheDocument();
   });
 });

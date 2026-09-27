@@ -7,4 +7,5 @@ Local Supabase (Postgres), migrations in `supabase/migrations/`. All tables have
 | [conversations](conversations.md) | One row per chat session |
 | [messages](messages.md) | Every user/assistant/staff turn in a conversation |
 | [tickets](tickets.md) | Logged support tickets, including AI classification and duplicate-detection results |
+| [leads](leads.md) | Logged sales leads (Customer Sales mode), the sales-flow counterpart to tickets |
 | [app_settings](app_settings.md) | Small key/value settings table (currently just the `working_hours` toggle) |
