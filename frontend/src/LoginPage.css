@@ -37,6 +37,7 @@
   border: 1px solid var(--border);
   font-size: 0.95rem;
   color: var(--text);
+  background: white;
 }
 
 .login-card input:focus {
