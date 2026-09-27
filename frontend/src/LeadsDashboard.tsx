@@ -98,10 +98,10 @@ export default function LeadsDashboard() {
   return (
     <div className="dashboard-shell">
       <header className="dashboard-header">
-        <h1>Customer Sales Staff View</h1>
+        <h1>Customer Sales Staff Leads</h1>
         <div className="nav-links">
           <Link className="nav-link" to="/staff">
-            Customer Support Staff View →
+            Customer Support Staff Tickets →
           </Link>
           <Link className="nav-link" to="/">
             ← Back to chat

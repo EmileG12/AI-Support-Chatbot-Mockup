@@ -273,26 +273,39 @@ function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>Fenmoor Telecom Support</h1>
+        <div className="app-title-row">
+          <h1>Fenmoor Telecom Support</h1>
+          <HelpModal />
+        </div>
         <p>Chat with us and we'll log a ticket for the right team.</p>
-        <label className="working-hours-toggle">
-          <input type="checkbox" checked={workingHours} onChange={handleToggleWorkingHours} />
-          Working hours
-        </label>
         <div className="nav-links">
           <Link className="nav-link" to="/staff">
-            Customer Support Staff View →
+            Customer Support Staff Tickets →
           </Link>
           <Link className="nav-link" to="/staff/sales">
-            Customer Sales Staff View →
+            Customer Sales Staff Leads →
           </Link>
-          <HelpModal />
           <LogoutButton />
         </div>
       </header>
 
       <div className="app-body">
-        <main className="chat-panel">
+        <div className="view-column">
+          <div className="view-column-header">
+            <h2>Customer View</h2>
+          </div>
+
+          <div className="working-hours-bar">
+            <label className="working-hours-toggle">
+              <input type="checkbox" checked={workingHours} onChange={handleToggleWorkingHours} />
+              Working hours
+            </label>
+            <span className={`working-hours-badge ${workingHours ? "badge-in-hours" : "badge-out-of-hours"}`}>
+              {workingHours ? "In working hours" : "Out of working hours"}
+            </span>
+          </div>
+
+          <main className="chat-panel">
           <div className="message-list">
             {messages.map((m) => (
               <div key={m.id} className={`message message-${m.role}`}>
@@ -376,34 +389,46 @@ function App() {
               </button>
             </form>
           )}
-        </main>
+          </main>
+        </div>
 
-        <div className="staff-panel">
-          {liveConversation?.mode === "sales" ? (
-            <StaffLeadChatWindow
-              conversationId={liveConversation.id}
-              initialDraftLead={liveConversation.draftLead}
-              initialMessages={liveConversation.messages}
-              onClose={() => setLiveConversation(null)}
-              onLeadCreated={() => {
-                // The panel shows its own "Lead #... created." confirmation
-                // and "Close" button - nothing more to do here.
-              }}
-            />
-          ) : liveConversation ? (
-            <StaffChatWindow
-              conversationId={liveConversation.id}
-              initialDraftTicket={liveConversation.draftTicket}
-              initialMessages={liveConversation.messages}
-              onClose={() => setLiveConversation(null)}
-              onTicketCreated={() => {
-                // The panel shows its own "Ticket #... created." confirmation
-                // and "Close" button - nothing more to do here.
-              }}
-            />
-          ) : (
-            <QueuePanel onJoined={handleJoined} />
-          )}
+        <div className="view-column">
+          <div className="view-column-header">
+            <h2>Staff View</h2>
+          </div>
+
+          <div className="staff-panel">
+            {liveConversation?.mode === "sales" ? (
+              <StaffLeadChatWindow
+                conversationId={liveConversation.id}
+                initialDraftLead={liveConversation.draftLead}
+                initialMessages={liveConversation.messages}
+                onClose={() => setLiveConversation(null)}
+                onLeadCreated={() => {
+                  // The panel shows its own "Lead #... created." confirmation
+                  // and "Close" button - nothing more to do here.
+                }}
+              />
+            ) : liveConversation ? (
+              <StaffChatWindow
+                conversationId={liveConversation.id}
+                initialDraftTicket={liveConversation.draftTicket}
+                initialMessages={liveConversation.messages}
+                onClose={() => setLiveConversation(null)}
+                onTicketCreated={() => {
+                  // The panel shows its own "Ticket #... created." confirmation
+                  // and "Close" button - nothing more to do here.
+                }}
+              />
+            ) : workingHours ? (
+              <QueuePanel onJoined={handleJoined} />
+            ) : (
+              <div className="queue-panel queue-panel-offline">
+                <h2>Live chat queue</h2>
+                <p className="queue-empty">Turn on working hours to see the live handoff queue.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -137,10 +137,10 @@ export default function StaffDashboard() {
   return (
     <div className="dashboard-shell">
       <header className="dashboard-header">
-        <h1>Customer Support Staff View</h1>
+        <h1>Customer Support Staff Tickets</h1>
         <div className="nav-links">
           <Link className="nav-link" to="/staff/sales">
-            Customer Sales Staff View →
+            Customer Sales Staff Leads →
           </Link>
           <Link className="nav-link" to="/">
             ← Back to chat

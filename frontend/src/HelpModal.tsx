@@ -45,26 +45,28 @@ export function HelpModal() {
 
           <h3>2. Working-hours live handoff</h3>
           <p>
-            Toggle <strong>Working hours</strong> in the header to switch from a fully autonomous
-            AI to a queue-and-handoff model, closer to a real support desk:
+            Toggle <strong>Working hours</strong> above the chat (Customer View) to switch from a
+            fully autonomous AI to a queue-and-handoff model, closer to a real support desk. The
+            badge next to it shows which mode you're currently in:
           </p>
           <ul>
             <li>Once a customer's contact details are confirmed, they're queued instead of the AI continuing.</li>
             <li>
-              In the panel on the right, click <strong>Join</strong> on a queued customer to chat
-              with them live, alongside an AI-drafted ticket/lead summary that updates as they
-              keep typing.
+              With working hours on, the <strong>Staff View</strong> panel shows the live chat
+              queue — click <strong>Join</strong> on a queued customer to chat with them live,
+              alongside an AI-drafted ticket/lead summary that updates as they keep typing.
+              (The queue is hidden while working hours are off.)
             </li>
             <li>Edit the draft and create the ticket/lead yourself, or click <strong>Issue resolved</strong> to have the AI summarize the whole conversation for you to review and accept.</li>
           </ul>
 
           <h3>3. Staff dashboards</h3>
           <p>
-            Use the header links to switch between the <strong>Customer Support Staff View</strong>{" "}
-            (tickets) and <strong>Customer Sales Staff View</strong> (leads). Filter by status/
-            category/priority, click a row to see the full chat transcript and details, and
-            override the AI's category/priority/status. A ⚠ marks tickets the system thinks may
-            duplicate an existing open one — the ticket detail panel lets you compare and resolve it.
+            Use the header links to switch between <strong>Customer Support Staff Tickets</strong>{" "}
+            and <strong>Customer Sales Staff Leads</strong>. Filter by status/category/priority,
+            click a row to see the full chat transcript and details, and override the AI's
+            category/priority/status. A ⚠ marks tickets the system thinks may duplicate an
+            existing open one — the ticket detail panel lets you compare and resolve it.
           </p>
         </div>
       </div>
