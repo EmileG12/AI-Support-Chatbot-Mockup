@@ -18,6 +18,7 @@ import { QueuePanel } from "./QueuePanel";
 import { StaffChatWindow } from "./StaffChatWindow";
 import { StaffLeadChatWindow } from "./StaffLeadChatWindow";
 import { LogoutButton } from "./LogoutButton";
+import { HelpModal } from "./HelpModal";
 import type {
   ChatMessage,
   ChatMode,
@@ -285,6 +286,7 @@ function App() {
           <Link className="nav-link" to="/staff/sales">
             Customer Sales Staff View →
           </Link>
+          <HelpModal />
           <LogoutButton />
         </div>
       </header>

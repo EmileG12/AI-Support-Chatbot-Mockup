@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { fetchTickets, fetchTicketDetail, updateTicket } from "./api";
 import { LogoutButton } from "./LogoutButton";
+import { HelpModal } from "./HelpModal";
 import { CATEGORY_LABELS, PRIORITY_LABELS } from "./TicketCard";
 import type { Ticket, TicketCategory, TicketPriority, TicketStatus, TicketDetail, ChatMessage } from "./types";
 import "./StaffDashboard.css";
@@ -144,6 +145,7 @@ export default function StaffDashboard() {
           <Link className="nav-link" to="/">
             ← Back to chat
           </Link>
+          <HelpModal />
           <LogoutButton />
         </div>
       </header>

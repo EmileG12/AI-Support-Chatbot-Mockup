@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { fetchLeads, fetchLeadDetail, updateLead } from "./api";
 import { LogoutButton } from "./LogoutButton";
+import { HelpModal } from "./HelpModal";
 import { SALES_CATEGORY_LABELS } from "./LeadCard";
 import type { Lead, LeadStatus, SalesCategory, LeadDetail, ChatMessage } from "./types";
 import "./StaffDashboard.css";
@@ -105,6 +106,7 @@ export default function LeadsDashboard() {
           <Link className="nav-link" to="/">
             ← Back to chat
           </Link>
+          <HelpModal />
           <LogoutButton />
         </div>
       </header>
