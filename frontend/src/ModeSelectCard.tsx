@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ChatMode } from "./types";
 
 interface ModeSelectCardProps {
@@ -6,16 +7,42 @@ interface ModeSelectCardProps {
 }
 
 export function ModeSelectCard({ onSelect, isSubmitting }: ModeSelectCardProps) {
+  const [selected, setSelected] = useState<ChatMode | null>(null);
+
   return (
-    <div className="mode-select-card">
-      <div className="mode-select-actions">
-        <button type="button" onClick={() => onSelect("support")} disabled={isSubmitting}>
+    <div className="message message-assistant mode-select-message">
+      <div className="mode-select-options">
+        <label className="mode-select-option">
+          <input
+            type="radio"
+            name="chat-mode"
+            value="support"
+            checked={selected === "support"}
+            onChange={() => setSelected("support")}
+            disabled={isSubmitting}
+          />
           Customer Support
-        </button>
-        <button type="button" className="secondary" onClick={() => onSelect("sales")} disabled={isSubmitting}>
+        </label>
+        <label className="mode-select-option">
+          <input
+            type="radio"
+            name="chat-mode"
+            value="sales"
+            checked={selected === "sales"}
+            onChange={() => setSelected("sales")}
+            disabled={isSubmitting}
+          />
           Customer Sales
-        </button>
+        </label>
       </div>
+      <button
+        type="button"
+        className="mode-select-continue"
+        onClick={() => selected && onSelect(selected)}
+        disabled={isSubmitting || !selected}
+      >
+        Continue
+      </button>
     </div>
   );
 }

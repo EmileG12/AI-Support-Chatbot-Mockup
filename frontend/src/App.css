@@ -568,18 +568,28 @@ body {
   cursor: not-allowed;
 }
 
-.mode-select-card {
-  padding: 16px 20px;
-  border-top: 1px solid var(--border);
-}
-
-.mode-select-actions {
+.mode-select-message {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.mode-select-actions button {
-  padding: 10px 16px;
+.mode-select-options {
+  display: flex;
+  gap: 16px;
+}
+
+.mode-select-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.mode-select-continue {
+  align-self: flex-start;
+  padding: 8px 16px;
   border-radius: 10px;
   border: none;
   background: var(--brand);
@@ -589,15 +599,14 @@ body {
   font-size: 0.9rem;
 }
 
-.mode-select-actions button.secondary {
-  background: #f0f0f4;
-  color: var(--text);
-}
-
-.mode-select-actions button:disabled {
+.mode-select-continue:disabled {
   background: #c9c9d4;
   color: white;
   cursor: not-allowed;
+}
+
+.mode-select-continue:not(:disabled):hover {
+  background: var(--brand-dark);
 }
 
 .lead-card {

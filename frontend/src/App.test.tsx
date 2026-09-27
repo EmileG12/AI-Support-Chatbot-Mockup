@@ -59,12 +59,18 @@ function renderApp() {
 }
 
 async function selectSupportMode(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole("button", { name: /customer support/i }));
+  await user.click(await screen.findByRole("radio", { name: /customer support/i }));
+  await user.click(screen.getByRole("button", { name: /continue/i }));
   await screen.findByPlaceholderText(/describe the issue/i);
 }
 
+async function selectSalesMode(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole("radio", { name: /customer sales/i }));
+  await user.click(screen.getByRole("button", { name: /continue/i }));
+}
+
 async function sendAMessage(user: ReturnType<typeof userEvent.setup>, text = "hello") {
-  if (screen.queryByRole("button", { name: /customer support/i })) {
+  if (screen.queryByRole("radio", { name: /customer support/i })) {
     await selectSupportMode(user);
   }
   await user.type(screen.getByPlaceholderText(/describe the issue/i), text);
@@ -100,8 +106,8 @@ describe("App", () => {
   it("shows the mode select card before any conversation starts, with no chat input yet", async () => {
     renderApp();
 
-    expect(await screen.findByRole("button", { name: /customer support/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /customer sales/i })).toBeInTheDocument();
+    expect(await screen.findByRole("radio", { name: /customer support/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /customer sales/i })).toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/describe the issue/i)).not.toBeInTheDocument();
   });
 
@@ -110,7 +116,7 @@ describe("App", () => {
     const user = userEvent.setup();
     renderApp();
 
-    await user.click(await screen.findByRole("button", { name: /customer sales/i }));
+    await selectSalesMode(user);
 
     expect(mockCreateConversation).toHaveBeenCalledWith("sales");
     expect(await screen.findByText(/are you looking for broadband or mobile/i)).toBeInTheDocument();
@@ -128,7 +134,7 @@ describe("App", () => {
     const user = userEvent.setup();
     renderApp();
 
-    await user.click(await screen.findByRole("button", { name: /customer sales/i }));
+    await selectSalesMode(user);
     await user.type(await screen.findByPlaceholderText(/describe the issue/i), "sign me up for the 220 plan");
     await user.click(screen.getByRole("button", { name: /send/i }));
 
@@ -364,7 +370,7 @@ describe("App", () => {
     const user = userEvent.setup();
     renderApp();
 
-    await user.click(await screen.findByRole("button", { name: /customer sales/i }));
+    await selectSalesMode(user);
     await user.type(await screen.findByPlaceholderText(/describe the issue/i), "I want a mobile plan");
     await user.click(screen.getByRole("button", { name: /send/i }));
 

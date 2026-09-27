@@ -91,6 +91,7 @@ function App() {
   const [liveConversation, setLiveConversation] = useState<LiveConversation | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     getSettings()
@@ -139,6 +140,12 @@ function App() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isSending]);
+
+  useEffect(() => {
+    if (!isSending) {
+      chatInputRef.current?.focus();
+    }
+  }, [isSending]);
 
   // Once queued/live, the AI stops replying synchronously - poll for whatever a
   // staff member (or the queue transition itself) has added, replacing the
@@ -296,6 +303,9 @@ function App() {
             {isSending && (
               <div className="message message-assistant message-pending">Typing…</div>
             )}
+            {mode === null && (
+              <ModeSelectCard onSelect={handleSelectMode} isSubmitting={isSelectingMode} />
+            )}
             <div ref={messagesEndRef} />
           </div>
 
@@ -322,10 +332,6 @@ function App() {
           )}
 
           {error && <div className="error-banner">{error}</div>}
-
-          {mode === null && (
-            <ModeSelectCard onSelect={handleSelectMode} isSubmitting={isSelectingMode} />
-          )}
 
           {mode !== null && awaitingContact && pendingContact && !isEditingContact && (
             <div className="contact-panel">
@@ -356,6 +362,7 @@ function App() {
           {mode !== null && !awaitingContact && (
             <form className="chat-input-row" onSubmit={handleSubmit}>
               <input
+                ref={chatInputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}

@@ -18,3 +18,10 @@
   margin: 0;
   padding: 0;
 }
+
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  color: #1a1a1f;
+  background-color: #ffffff;
+}
