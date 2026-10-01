@@ -138,7 +138,7 @@ describe("App", () => {
     await user.type(await screen.findByPlaceholderText(/describe the issue/i), "sign me up for the 220 plan");
     await user.click(screen.getByRole("button", { name: /send/i }));
 
-    expect(await screen.findByText("Customer wants to sign up for Full Fibre 220.")).toBeInTheDocument();
+    expect(await screen.findByText("Customer wants to sign up for Fast Fibre 220.")).toBeInTheDocument();
   });
 
   it("sends a message and renders the assistant's reply", async () => {

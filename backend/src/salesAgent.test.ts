@@ -59,13 +59,13 @@ describe("runSalesAgentTurn", () => {
 
   it("returns the reply with a null lead when no tool is called", async () => {
     mockCreate.mockResolvedValueOnce({
-      content: [{ type: "text", text: "Our fastest plan is Full Fibre 1000 at £36/month." }],
+      content: [{ type: "text", text: "Our fastest plan is Ultra Fibre 1000 at £36/month." }],
     });
 
     const result = await runSalesAgentTurn(history, "broadband", false);
 
     expect(result).toEqual({
-      reply: "Our fastest plan is Full Fibre 1000 at £36/month.",
+      reply: "Our fastest plan is Ultra Fibre 1000 at £36/month.",
       lead: null,
       pendingContact: null,
     });
@@ -125,7 +125,7 @@ describe("runSalesAgentTurn", () => {
 
     await runSalesAgentTurn(history, "broadband", false);
 
-    expect(mockCreate.mock.calls[0][0].system).toContain("Full Fibre Broadband 220");
+    expect(mockCreate.mock.calls[0][0].system).toContain("Fast Fibre 220");
   });
 
   it("uses the mobile-specific system prompt for the mobile category", async () => {
@@ -133,7 +133,7 @@ describe("runSalesAgentTurn", () => {
 
     await runSalesAgentTurn(history, "mobile", false);
 
-    expect(mockCreate.mock.calls[0][0].system).toContain("Unlimited Plan");
+    expect(mockCreate.mock.calls[0][0].system).toContain("Unlimited SIM");
   });
 
   it("makes a follow-up call and returns the parsed lead when create_lead is called", async () => {
@@ -146,8 +146,8 @@ describe("runSalesAgentTurn", () => {
             name: "create_lead",
             input: {
               category: "broadband",
-              plan_interested: "Full Fibre Broadband 220",
-              summary: "Customer wants to sign up for Full Fibre 220.",
+              plan_interested: "Fast Fibre 220",
+              summary: "Customer wants to sign up for Fast Fibre 220.",
               raw_message: "I'll take the 220 plan",
             },
           },
@@ -173,8 +173,8 @@ describe("runSalesAgentTurn", () => {
       reply: "Great, we've logged your interest and someone will be in touch.",
       lead: {
         category: "broadband",
-        plan_interested: "Full Fibre Broadband 220",
-        summary: "Customer wants to sign up for Full Fibre 220.",
+        plan_interested: "Fast Fibre 220",
+        summary: "Customer wants to sign up for Fast Fibre 220.",
         raw_message: "I'll take the 220 plan",
       },
       pendingContact: null,
@@ -214,7 +214,7 @@ describe("draftLeadSummary", () => {
 
     expect(mockCreate).toHaveBeenCalledTimes(1);
     expect(mockCreate.mock.calls[0][0].tool_choice).toEqual({ type: "tool", name: "create_lead" });
-    expect(mockCreate.mock.calls[0][0].system).toContain("Unlimited Plan");
+    expect(mockCreate.mock.calls[0][0].system).toContain("Unlimited SIM");
     expect(result).toEqual({
       category: "mobile",
       summary: "Wants unlimited data.",

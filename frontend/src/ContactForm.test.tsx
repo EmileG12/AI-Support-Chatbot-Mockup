@@ -15,7 +15,14 @@ const INITIAL = {
 describe("ContactForm", () => {
   it("pre-fills the fields from the initial contact", () => {
     render(
-      <ContactForm initial={INITIAL} onSubmit={vi.fn()} onCancel={vi.fn()} isSubmitting={false} error={null} />
+      <ContactForm
+        initial={INITIAL}
+        mode="support"
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+        isSubmitting={false}
+        error={null}
+      />
     );
 
     expect(screen.getByLabelText("Name")).toHaveValue("Jane Doe");
@@ -30,7 +37,14 @@ describe("ContactForm", () => {
     const onSubmit = vi.fn();
     const user = userEvent.setup();
     render(
-      <ContactForm initial={INITIAL} onSubmit={onSubmit} onCancel={vi.fn()} isSubmitting={false} error={null} />
+      <ContactForm
+        initial={INITIAL}
+        mode="support"
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+        isSubmitting={false}
+        error={null}
+      />
     );
 
     await user.clear(screen.getByLabelText("Email"));
@@ -52,7 +66,14 @@ describe("ContactForm", () => {
     const onCancel = vi.fn();
     const user = userEvent.setup();
     render(
-      <ContactForm initial={INITIAL} onSubmit={vi.fn()} onCancel={onCancel} isSubmitting={false} error={null} />
+      <ContactForm
+        initial={INITIAL}
+        mode="support"
+        onSubmit={vi.fn()}
+        onCancel={onCancel}
+        isSubmitting={false}
+        error={null}
+      />
     );
 
     await user.click(screen.getByRole("button", { name: /cancel/i }));
@@ -64,6 +85,7 @@ describe("ContactForm", () => {
     render(
       <ContactForm
         initial={INITIAL}
+        mode="support"
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
         isSubmitting={false}
@@ -72,5 +94,21 @@ describe("ContactForm", () => {
     );
 
     expect(screen.getByText("a valid email is required")).toBeInTheDocument();
+  });
+
+  it("asks about an existing account instead of account-holder status in sales mode", () => {
+    render(
+      <ContactForm
+        initial={INITIAL}
+        mode="sales"
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+        isSubmitting={false}
+        error={null}
+      />
+    );
+
+    expect(screen.getByLabelText(/i already have an account with fenmoor telecom/i)).toBeChecked();
+    expect(screen.queryByLabelText(/i am the account holder/i)).not.toBeInTheDocument();
   });
 });

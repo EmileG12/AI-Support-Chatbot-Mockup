@@ -1,13 +1,14 @@
-import type { ContactDetails } from "./types";
+import type { ChatMode, ContactDetails } from "./types";
 
 interface ContactConfirmCardProps {
   contact: ContactDetails;
+  mode: ChatMode;
   onConfirm: () => void;
   onEdit: () => void;
   isSubmitting: boolean;
 }
 
-export function ContactConfirmCard({ contact, onConfirm, onEdit, isSubmitting }: ContactConfirmCardProps) {
+export function ContactConfirmCard({ contact, mode, onConfirm, onEdit, isSubmitting }: ContactConfirmCardProps) {
   return (
     <div className="contact-confirm-card">
       <dl>
@@ -21,7 +22,7 @@ export function ContactConfirmCard({ contact, onConfirm, onEdit, isSubmitting }:
         <dd>{contact.address}</dd>
         <dt>Postcode</dt>
         <dd>{contact.postcode}</dd>
-        <dt>Account holder</dt>
+        <dt>{mode === "sales" ? "Already have an account" : "Account holder"}</dt>
         <dd>{contact.isAccountHolder ? "Yes" : "No"}</dd>
       </dl>
       <div className="contact-confirm-actions">

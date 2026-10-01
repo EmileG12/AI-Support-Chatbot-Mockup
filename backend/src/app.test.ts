@@ -215,7 +215,7 @@ describe("GET /api/leads/:id", () => {
   });
 
   it("returns the lead and its transcript", async () => {
-    queueResult({ data: { id: "l1", conversation_id: "c1", summary: "Wants Full Fibre 220" }, error: null });
+    queueResult({ data: { id: "l1", conversation_id: "c1", summary: "Wants Fast Fibre 220" }, error: null });
     queueResult({ data: [{ id: "m1", role: "user", content: "I'll take the 220 plan" }], error: null });
 
     const res = await agent.get("/api/leads/l1");
@@ -508,7 +508,7 @@ describe("POST /api/chat", () => {
     mockRunSalesClassifierTurn.mockResolvedValueOnce({ reply: "", category: "broadband" });
     queueResult({ error: null, data: null }); // sales_category update
     mockRunSalesAgentTurn.mockResolvedValueOnce({
-      reply: "Our fastest plan is Full Fibre 1000 at £36/month.",
+      reply: "Our fastest plan is Ultra Fibre 1000 at £36/month.",
       lead: null,
       pendingContact: null,
     });
@@ -522,7 +522,7 @@ describe("POST /api/chat", () => {
     expect(mockRunAgentTurn).not.toHaveBeenCalled();
     expect(mockRunSalesClassifierTurn).toHaveBeenCalledTimes(1);
     expect(mockRunSalesAgentTurn).toHaveBeenCalledWith(expect.anything(), "broadband", false);
-    expect(res.body.reply).toBe("Our fastest plan is Full Fibre 1000 at £36/month.");
+    expect(res.body.reply).toBe("Our fastest plan is Ultra Fibre 1000 at £36/month.");
     expect(res.body.ticket).toBeNull();
     expect(res.body.lead).toBeNull();
   });
@@ -561,7 +561,7 @@ describe("POST /api/chat", () => {
       reply: "Great, we've logged your interest and someone will be in touch.",
       lead: {
         category: "mobile",
-        plan_interested: "Unlimited Plan",
+        plan_interested: "Unlimited SIM",
         summary: "Customer wants the Unlimited mobile plan.",
         raw_message: "sign me up for unlimited",
       },
@@ -665,6 +665,7 @@ describe("PATCH /api/conversations/:id/contact", () => {
   });
 
   it("overwrites the conversation's contact details and confirms them", async () => {
+    queueResult({ data: { mode: "support" }, error: null }); // conversation mode lookup
     queueResult({ error: null, data: null }); // conversation contact overwrite
     queueResult({ error: null, data: null }); // contact_confirmed = true update
     queueResult({ error: null, data: null }); // synthetic correction message insert
@@ -692,7 +693,7 @@ describe("PATCH /api/conversations/:id/contact", () => {
     expect(res.status).toBe(200);
     expect(res.body.reply).toBe("Thanks - what can I help you with today?");
 
-    const correctionInsertChain = supabase.from.mock.results[2].value as {
+    const correctionInsertChain = supabase.from.mock.results[3].value as {
       insert: ReturnType<typeof vi.fn>;
     };
     expect(correctionInsertChain.insert).toHaveBeenCalledWith(
@@ -1063,7 +1064,7 @@ describe("POST /api/conversations/:id/staff-create-lead", () => {
 
     const res = await agent.post("/api/conversations/c2/staff-create-lead").send({
       category: "broadband",
-      plan_interested: "Full Fibre Broadband 220",
+      plan_interested: "Fast Fibre 220",
       summary: "Wants faster broadband",
       raw_message: "I want faster broadband",
     });

@@ -1,15 +1,16 @@
 import { useState, type FormEvent } from "react";
-import type { ContactDetails } from "./types";
+import type { ChatMode, ContactDetails } from "./types";
 
 interface ContactFormProps {
   initial: ContactDetails;
+  mode: ChatMode;
   onSubmit: (details: ContactDetails) => void;
   onCancel: () => void;
   isSubmitting: boolean;
   error: string | null;
 }
 
-export function ContactForm({ initial, onSubmit, onCancel, isSubmitting, error }: ContactFormProps) {
+export function ContactForm({ initial, mode, onSubmit, onCancel, isSubmitting, error }: ContactFormProps) {
   const [name, setName] = useState(initial.name);
   const [email, setEmail] = useState(initial.email);
   const [phone, setPhone] = useState(initial.phone);
@@ -80,7 +81,7 @@ export function ContactForm({ initial, onSubmit, onCancel, isSubmitting, error }
           onChange={(e) => setIsAccountHolder(e.target.checked)}
           disabled={isSubmitting}
         />
-        I am the account holder
+        {mode === "sales" ? "I already have an account with Fenmoor Telecom" : "I am the account holder"}
       </label>
 
       {error && <div className="error-banner">{error}</div>}

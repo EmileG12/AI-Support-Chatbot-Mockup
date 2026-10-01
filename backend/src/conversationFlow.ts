@@ -27,11 +27,15 @@ export interface StoredMessage {
   content: string;
 }
 
-export function formatContactConfirmation(contact: ContactDetails): string {
+export function formatContactConfirmation(contact: ContactDetails, mode: ChatMode): string {
+  const accountLine =
+    mode === "sales"
+      ? `Already have an account with us: ${contact.isAccountHolder ? "Yes" : "No"}`
+      : `Account holder: ${contact.isAccountHolder ? "Yes" : "No"}`;
   return (
     `Just to confirm, that's:\nName: ${contact.name}\nEmail: ${contact.email}\nPhone: ${contact.phone}\n` +
     `Address: ${contact.address}\nPostcode: ${contact.postcode}\n` +
-    `Account holder: ${contact.isAccountHolder ? "Yes" : "No"}\n\nIs that all correct?`
+    `${accountLine}\n\nIs that all correct?`
   );
 }
 
@@ -311,7 +315,7 @@ export async function runAndPersistTurn(conversationId: string): Promise<TurnRes
       })
       .eq("id", conversationId);
 
-    const confirmationText = formatContactConfirmation(pendingContact);
+    const confirmationText = formatContactConfirmation(pendingContact, "support");
     await insertMessage(conversationId, "assistant", confirmationText);
     return {
       reply: confirmationText,
@@ -390,7 +394,7 @@ async function runSalesTurn(conversationId: string, state: ConversationState): P
       })
       .eq("id", conversationId);
 
-    const confirmationText = formatContactConfirmation(pendingContact);
+    const confirmationText = formatContactConfirmation(pendingContact, "sales");
     await insertMessage(conversationId, "assistant", confirmationText);
     return {
       reply: confirmationText,
@@ -482,6 +486,14 @@ export async function overwriteContact(
   const validationError = validateContactDetails(input);
   if (validationError) return { error: validationError };
 
+  const { data: conversation, error } = await supabase
+    .from("conversations")
+    .select("mode")
+    .eq("id", conversationId)
+    .single();
+  if (error || !conversation) return { error: "Conversation not found" };
+  const mode: ChatMode = conversation.mode ?? "support";
+
   const contact = {
     name: input.name!.trim(),
     email: input.email!.trim(),
@@ -503,11 +515,16 @@ export async function overwriteContact(
     })
     .eq("id", conversationId);
 
+  const accountLine =
+    mode === "sales"
+      ? `Already have an account with us: ${contact.isAccountHolder ? "Yes" : "No"}`
+      : `Account holder: ${contact.isAccountHolder ? "Yes" : "No"}`;
+
   return finalizeContact(
     conversationId,
     `Actually, here are my correct details - Name: ${contact.name}, Email: ${contact.email}, ` +
       `Phone: ${contact.phone}, Address: ${contact.address}, Postcode: ${contact.postcode}, ` +
-      `Account holder: ${contact.isAccountHolder ? "Yes" : "No"}.`
+      `${accountLine}.`
   );
 }
 

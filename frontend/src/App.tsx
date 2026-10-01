@@ -352,6 +352,7 @@ function App() {
             <div className="contact-panel">
               <ContactConfirmCard
                 contact={pendingContact}
+                mode={mode}
                 onConfirm={handleConfirmContact}
                 onEdit={() => setIsEditingContact(true)}
                 isSubmitting={isContactSubmitting}
@@ -363,6 +364,7 @@ function App() {
             <div className="contact-panel">
               <ContactForm
                 initial={pendingContact}
+                mode={mode}
                 onSubmit={handleSubmitContactForm}
                 onCancel={() => {
                   setIsEditingContact(false);

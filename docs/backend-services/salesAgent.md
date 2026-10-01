@@ -55,22 +55,28 @@ first.
 
 ### Broadband catalog (baked into `BROADBAND_SALES_SYSTEM_PROMPT`)
 
-Fibre 40 (~38/9 Mbps, FTTC, £21/mo, 24mo), Fibre 80 (~67/17 Mbps, hybrid SoGEA, £23/mo, 24mo), Full
-Fibre 220 (~207/29 Mbps, FTTP, £33/mo, 24mo), Full Fibre 330 (~311/47 Mbps, FTTP, £33/mo, 24mo),
-Full Fibre 1000 (~944/110 Mbps, FTTP, £36/mo, 24mo), and the student-only Full Fibre 115 (~109/19
-Mbps, FTTP, £39.99/mo, 12mo). The prompt tells Claude to ask about household size/use-case if
-unclear and recommend accordingly (light use -> Fibre 40/80, streaming-heavy/multi-device ->
-220/330, heaviest multi-user households -> 1000, students -> the 115 student plan).
+Essential Fibre 40 (~38/9 Mbps, FTTC, £21/mo, 24mo), Plus Fibre 80 (~67/17 Mbps, hybrid SoGEA,
+£23/mo, 24mo), Fast Fibre 220 (~207/29 Mbps, FTTP, £33/mo, 24mo), Fast Fibre 330 (~311/47 Mbps,
+FTTP, £33/mo, 24mo), Ultra Fibre 1000 (~944/110 Mbps, FTTP, £36/mo, 24mo), and the student-only
+Student Fibre 115 (~109/19 Mbps, FTTP, £39.99/mo, 12mo). The prompt tells Claude to ask about
+household size/use-case if unclear and recommend accordingly (light use -> Essential/Plus Fibre,
+streaming-heavy/multi-device -> Fast Fibre 220/330, heaviest multi-user households -> Ultra Fibre
+1000, students -> Student Fibre).
 
 ### Mobile catalog (baked into `MOBILE_SALES_SYSTEM_PROMPT`)
 
-Both are O2-network SIM-only, 12-month contracts, unlimited UK calls/texts, free EU roaming,
-keep-your-number: 15GB for £7.50/mo, and Unlimited data for £12/mo. The prompt tells Claude to ask
-roughly how much data the customer uses if unclear.
+Both are SIM-only on a generic "partner mobile network" (deliberately not naming a real MVNO),
+12-month contracts, unlimited UK calls/texts, free EU roaming, keep-your-number: Lite SIM for 15GB
+at £7.50/mo, and Unlimited SIM for unlimited data at £12/mo. The prompt tells Claude to ask roughly
+how much data the customer uses if unclear.
 
-Both catalogs are hand-cleaned text baked directly into the system prompts (not read from
-`Salesdetails/*.txt` at runtime) - see [conversations.md](../db-schema/conversations.md)'s `mode`/
-`sales_category` columns for how a conversation gets routed here in the first place.
+All plan names, the "partner mobile network" wording, and the Fenmoor Telecom brand name
+throughout these prompts are deliberately generic/fictional, so the demo isn't tied to (or
+scraping the real pricing/copy of) an actual company.
+
+Both catalogs are hand-written text baked directly into the system prompts - see
+[conversations.md](../db-schema/conversations.md)'s `mode`/`sales_category` columns for how a
+conversation gets routed here in the first place.
 
 ## Related
 

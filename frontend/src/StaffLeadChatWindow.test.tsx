@@ -81,7 +81,7 @@ describe("StaffLeadChatWindow", () => {
       id: "99999999-8888-7777-6666-555555555555",
       conversation_id: "c2",
       category: "broadband",
-      plan_interested: "Full Fibre Broadband 220",
+      plan_interested: "Fast Fibre 220",
       summary: "Wants a faster broadband plan.",
       status: "new",
       created_at: "2026-09-27T12:00:00Z",
@@ -99,12 +99,12 @@ describe("StaffLeadChatWindow", () => {
       />
     );
 
-    await user.type(screen.getByLabelText("Plan interested"), "Full Fibre Broadband 220");
+    await user.type(screen.getByLabelText("Plan interested"), "Fast Fibre 220");
     await user.click(screen.getByRole("button", { name: /create lead/i }));
 
     expect(mockCreateLeadFromDraft).toHaveBeenCalledWith(
       "c2",
-      expect.objectContaining({ plan_interested: "Full Fibre Broadband 220" })
+      expect.objectContaining({ plan_interested: "Fast Fibre 220" })
     );
     expect(await screen.findByText("Lead #99999999 created.")).toBeInTheDocument();
     expect(onLeadCreated).toHaveBeenCalledTimes(1);
