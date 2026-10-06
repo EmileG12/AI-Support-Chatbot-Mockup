@@ -16,6 +16,9 @@ All in `backend/src/app.ts`. Every route except `POST /api/login`, `GET /api/me`
 | [GET /api/tickets](get-api-tickets.md) | List tickets, filterable by status/category/priority |
 | [GET /api/tickets/:id](get-api-tickets-id.md) | One ticket's full record, transcript, and duplicate link |
 | [PATCH /api/tickets/:id](patch-api-tickets-id.md) | Override a ticket's category/priority/status |
+| [GET /api/leads](get-api-leads.md) | List leads, filterable by status/category |
+| [GET /api/leads/:id](get-api-leads-id.md) | One lead's full record and transcript |
+| [PATCH /api/leads/:id](patch-api-leads-id.md) | Override a lead's category/status |
 | [GET /api/settings](get-api-settings.md) | Read the `working_hours` toggle |
 | [PATCH /api/settings](patch-api-settings.md) | Set the `working_hours` toggle |
 | [GET /api/conversations/queue](get-conversations-queue.md) | List conversations waiting for a staff member |

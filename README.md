@@ -1,7 +1,8 @@
 # Fenmoor Telecom Mockup
 
-A mockup ISP chatbot: customers describe their issue in chat, Claude classifies it and logs a
-support ticket via a `create_ticket` tool call, backed by a local Supabase (Postgres) instance.
+A mockup ISP chatbot: customers chat in about either an existing issue or buying a plan, Claude
+classifies it and logs a support ticket (`create_ticket`) or a sales lead (`create_lead`), backed by
+a local Supabase (Postgres) instance.
 
 ## Stack
 
@@ -30,7 +31,8 @@ Studio (to browse the `tickets` table) is at `http://127.0.0.1:54333`.
 
 ```
 cd backend
-cp .env.example .env   # then fill in ANTHROPIC_API_KEY and SUPABASE_SERVICE_ROLE_KEY
+cp .env.example .env   # then fill in ANTHROPIC_API_KEY, SUPABASE_SERVICE_ROLE_KEY, and a demo
+                        # APP_USERNAME/APP_PASSWORD/COOKIE_SECRET to log in locally
 npm install
 npm run dev
 ```
@@ -47,7 +49,18 @@ npm run dev
 
 Runs on `http://localhost:5173`.
 
+## Login
+
+The whole app sits behind a login page (`/login`) — see "Not yet built" below. Set `APP_USERNAME`/
+`APP_PASSWORD` in `backend/.env` to whatever you like for local use, then log in with those at
+`http://localhost:5173/login`.
+
 ## How it works
+
+The chat page (`/`) opens by asking whether the customer has an existing issue or is interested in
+plans, which picks one of two independent modes for the rest of the conversation:
+
+### Customer Support mode
 
 1. The React chat UI posts each customer message to `POST /api/chat` on the backend.
 2. The backend loads the conversation history from Supabase and sends it to Claude
@@ -56,22 +69,35 @@ Runs on `http://localhost:5173`.
 3. Claude either asks a clarifying question or calls `create_ticket` with a category
    (`broadband_fault`, `mobile_fault`, `landline_fault`, `voip_fault`, `billing`, `provisioning`,
    `account`, `complaint`, `other`), a priority (`low`/`medium`/`high`/`urgent`) and a short summary.
-2. When a ticket is created, the backend inserts it into the `tickets` table and the frontend
+4. When a ticket is created, the backend inserts it into the `tickets` table and the frontend
    shows a confirmation card inline in the chat.
-4. Before inserting, the backend also checks for a likely duplicate: a Postgres function
+5. Before inserting, the backend also checks for a likely duplicate: a Postgres function
    (`find_possible_duplicate_ticket`, using the `pg_trgm` extension) trigram-matches the new
    ticket's text against other open tickets in the same category from the last 48 hours. A match
    above the similarity threshold is recorded on the ticket (`possible_duplicate_of`,
    `duplicate_similarity`) and surfaced to the customer as a soft note, with full detail shown to
    staff.
 
-## Staff dashboard
+### Customer Sales mode
 
-`http://localhost:5173/staff` (linked from the chat page) lists tickets with status/category/
-priority filters. Selecting a ticket shows its full chat transcript, troubleshooting notes, and
-(if flagged) a duplicate banner linking to the original ticket with a "close as duplicate" action.
-Category, priority and status can all be overridden here — this is the human-in-the-loop check on
-the AI's classification before a ticket is actioned.
+A separate chat purpose that answers product questions from Pop Telecom's broadband/mobile catalog
+and, once the customer shows buying intent, collects contact details and calls `create_lead`
+instead of `create_ticket` — producing a `leads` row rather than a ticket, with no duplicate
+detection. See [docs/architecture.md](docs/architecture.md) for the full flow (classification,
+contact collection, and how it shares the working-hours handoff below with Support).
+
+## Staff dashboards
+
+- `http://localhost:5173/staff` (linked from the chat page) lists **tickets** with status/category/
+  priority filters. Selecting a ticket shows its full chat transcript, troubleshooting notes, and
+  (if flagged) a duplicate banner linking to the original ticket with a "close as duplicate" action.
+  Category, priority and status can all be overridden here — this is the human-in-the-loop check on
+  the AI's classification before a ticket is actioned.
+- `http://localhost:5173/staff/sales` is the same idea for **leads**: list/filter, inspect a lead's
+  transcript, override category/status. No duplicate detection (leads don't have any).
+
+Both pages, and the chat page itself, have a "How to use this demo" button in the header with an
+in-app walkthrough of the whole flow.
 
 ## Working-hours live handoff
 
@@ -83,7 +109,8 @@ to a queue-and-handoff model, closer to how a real support desk runs:
 1. With it **on**, once a customer's contact details are confirmed they're queued instead of the
    AI continuing to troubleshoot — a canned message gives a randomized 1–5 minute wait estimate,
    and further messages just wait in the transcript.
-2. The staff-side panel's queue list shows waiting customers; clicking "Join" opens a live two-way
+2. The staff-side panel's queue list (hidden, with a prompt to turn working hours on, while the
+   toggle is off) shows waiting customers; clicking "Join" opens a live two-way
    chat with the customer right there, alongside an AI-drafted ticket summary (category/priority/
    summary/diagnostics) read off the transcript for context. That summary keeps itself current as
    the customer sends more messages — though never by silently overwriting a field staff have
@@ -96,8 +123,10 @@ to a queue-and-handoff model, closer to how a real support desk runs:
    summary attached as its resolution notes.
 
 With the toggle **off** (the default), behavior is unchanged: the AI handles the whole conversation
-end-to-end as described above. See [docs/backend-services/conversationFlow.md](docs/backend-services/conversationFlow.md)
-for the full state machine.
+end-to-end as described above. The whole handoff is mode-agnostic — a Customer Sales conversation
+queues and goes live exactly the same way, just producing a lead instead of a ticket at the end. See
+[docs/backend-services/conversationFlow.md](docs/backend-services/conversationFlow.md) for the full
+state machine.
 
 ## Tests
 
@@ -110,5 +139,7 @@ cd backend && npm run test    # supertest against the Express app, mocks Supabas
 
 ## Not yet built
 
-- Auth (both ends currently trust all requests — fine for a local mockup, not for production)
+- Real auth — there's a login gate (`backend/src/auth.ts`), but it's a single hardcoded
+  `APP_USERNAME`/`APP_PASSWORD` account for the whole app, not per-user accounts, and no password
+  hashing. Fine for a demo deployment, not for production.
 - RLS policies (currently default-deny; all access goes through the backend's service-role key)

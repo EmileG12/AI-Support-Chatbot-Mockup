@@ -16,7 +16,10 @@ required since the frontend and backend are on different origins in production.
 | [submitContact](submitContact.md) | Submit corrected contact details |
 | [fetchTickets](fetchTickets.md) | List tickets with optional status/category/priority filters |
 | [fetchTicketDetail](fetchTicketDetail.md) | Load one ticket's full record, transcript, and duplicate link |
-| [updateTicket](updateTicket.md) | Override a ticket's category/priority/status |
+| [updateTicket](updateTicket.md) | Override a ticket's category/priority/status/duplicate_dismissed |
+| [fetchLeads](fetchLeads.md) | List leads with optional status/category filters |
+| [fetchLeadDetail](fetchLeadDetail.md) | Load one lead's full record and transcript |
+| [updateLead](updateLead.md) | Override a lead's category/status |
 | [getSettings](getSettings.md) | Read the `working_hours` toggle |
 | [updateSettings](updateSettings.md) | Set the `working_hours` toggle |
 | [getQueue](getQueue.md) | List conversations waiting for a staff member |

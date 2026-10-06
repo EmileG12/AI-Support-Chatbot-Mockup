@@ -5,7 +5,7 @@
 ## Purpose
 
 Shared "Log out" control rendered in the header nav of [App](App.md),
-[StaffDashboard](StaffDashboard.md), and `LeadsDashboard`.
+[StaffDashboard](StaffDashboard.md), and [LeadsDashboard](LeadsDashboard.md).
 
 ## Behavior
 

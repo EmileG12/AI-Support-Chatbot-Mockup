@@ -5,8 +5,10 @@
 | [LoginPage](LoginPage.md) | `frontend/src/LoginPage.tsx` | Single-account sign-in form (`/login`) |
 | [AuthGate](AuthGate.md) | `frontend/src/AuthGate.tsx` | Layout route gating `/`, `/staff`, `/staff/sales` behind login |
 | [LogoutButton](LogoutButton.md) | `frontend/src/LogoutButton.tsx` | Shared "Log out" control used in the header nav |
+| [HelpModal](HelpModal.md) | `frontend/src/HelpModal.tsx` | "?" button and overlay explaining how to use the demo, shared across pages |
 | [App](App.md) | `frontend/src/App.tsx` | Customer-facing chat page (`/`) |
 | [StaffDashboard](StaffDashboard.md) | `frontend/src/StaffDashboard.tsx` | Internal ticket list/detail/override page (`/staff`) |
+| [LeadsDashboard](LeadsDashboard.md) | `frontend/src/LeadsDashboard.tsx` | Internal lead list/detail/override page (`/staff/sales`) |
 | [ModeSelectCard](ModeSelectCard.md) | `frontend/src/ModeSelectCard.tsx` | "Customer Support" / "Customer Sales" mode-picker card shown before a conversation starts |
 | [TicketCard](TicketCard.md) | `frontend/src/TicketCard.tsx` | Ticket summary card, used in both pages above |
 | [LeadCard](LeadCard.md) | `frontend/src/LeadCard.tsx` | Sales lead summary card, the Customer Sales counterpart to TicketCard |

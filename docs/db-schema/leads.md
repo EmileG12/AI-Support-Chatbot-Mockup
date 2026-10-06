@@ -44,7 +44,7 @@ RLS enabled, no policies (see [docs/rls-policies/README.md](../rls-policies/READ
 - `category` — the conversation's classified `sales_category` at the time the lead was logged; see [conversations.md](conversations.md).
 - `plan_interested` — the specific plan name the customer settled on (e.g. "Full Fibre Broadband 220"), if the sales agent could tell one. `null` if the customer wants to proceed without having picked a specific plan yet.
 - `customer_name`/`customer_email`/`customer_phone`/`customer_address`/`customer_postcode`/`customer_is_account_holder` — not part of the `create_lead` tool call; copied from the parent `conversations` row (already confirmed by this point, via the same `collect_contact_details` flow as support) when the lead is inserted.
-- `status` — no route currently updates this after creation; it stays `'new'` until a future staff-facing leads view is built (there's no leads-management UI yet, unlike `tickets`' `PATCH /api/tickets/:id`).
+- `status` — defaults to `'new'` on creation; staff can override it (along with `category`) via [PATCH /api/leads/:id](../api-routes/patch-api-leads-id.md) in [LeadsDashboard](../components/LeadsDashboard.md) — the `leads` counterpart to `tickets`' `PATCH /api/tickets/:id`.
 - No duplicate-detection - `find_possible_duplicate_ticket` is ticket-specific and isn't run for leads.
 
 ## Related
@@ -54,3 +54,4 @@ RLS enabled, no policies (see [docs/rls-policies/README.md](../rls-policies/READ
 - [docs/backend-services/salesAgent.md](../backend-services/salesAgent.md) — produces the `create_lead` tool call this table stores.
 - [docs/backend-services/conversationFlow.md](../backend-services/conversationFlow.md) — `createLeadForConversation`.
 - [docs/api-routes/post-staff-create-lead.md](../api-routes/post-staff-create-lead.md) — the staff-initiated way a row here gets created.
+- [docs/components/LeadsDashboard.md](../components/LeadsDashboard.md), [docs/api-routes/get-api-leads.md](../api-routes/get-api-leads.md), [docs/api-routes/get-api-leads-id.md](../api-routes/get-api-leads-id.md), [docs/api-routes/patch-api-leads-id.md](../api-routes/patch-api-leads-id.md)

@@ -16,8 +16,8 @@ conversation is: which mode it's in, and where it is in the upfront contact-coll
 - Keeps `mode: ChatMode | null` (`null` until a mode is picked) and `conversationId: string | null`
   (`null` until [ModeSelectCard](ModeSelectCard.md) is used - see below), reused for every
   subsequent turn in the session (no persistence across a page reload).
-- **While `mode` is `null`**: renders [ModeSelectCard](ModeSelectCard.md) in place of the chat
-  input. Picking a mode calls `createConversation` (see
+- **While `mode` is `null`**: renders [ModeSelectCard](ModeSelectCard.md) inline at the end of the
+  message list; the chat input row itself doesn't render until a mode is picked. Picking a mode calls `createConversation` (see
   [docs/frontend-utils/createConversation.md](../frontend-utils/createConversation.md)), stores the
   returned `conversationId`, sets `mode`, and appends the matching canned welcome message (contact
   details ask for support; "are you looking for broadband or mobile?" for sales) to `messages`.
@@ -43,7 +43,9 @@ conversation is: which mode it's in, and where it is in the upfront contact-coll
     showing the edit form so the customer can correct it themselves.
 - Shows a "Typing…" placeholder while a chat request is in flight, and an inline error banner if
   the request fails.
-- Header includes a `Link` to `/staff` (the [StaffDashboard](StaffDashboard.md)).
+- Header: title plus [HelpModal](HelpModal.md) in a title row, a description line, and a nav row
+  with links to `/staff` ("Customer Support Staff Tickets →") and `/staff/sales` ("Customer Sales
+  Staff Leads →") and [LogoutButton](LogoutButton.md).
 
 ## Working-hours live handoff
 
@@ -67,20 +69,28 @@ added optimistically during the normal send flow, so a merge-by-id would render 
 twice under two different ids. A full replace with the authoritative server transcript sidesteps
 that entirely (the visible content is identical either way, only the id changes).
 
-## Staff-side panel
+## Layout: Customer View / Staff View columns
 
-The header also has a "Working hours" checkbox (`getSettings` on mount, `updateSettings` on
-toggle — see [settings](../backend-services/settings.md)); optimistically flips local state and
-rolls back if the request fails.
+Below the header, `.app-body` renders two `.view-column`s side by side — "Customer View" (the chat
+panel) and "Staff View" (the panel below) — deliberately on this same page rather than splitting the
+staff half onto [StaffDashboard](StaffDashboard.md), so a single browser tab can demo both sides of
+the working-hours handoff at once.
 
-Below the header, `.app-body` renders `.chat-panel` (the customer chat above) and `.staff-panel`
-**side by side** — deliberately on this same page rather than on [StaffDashboard](StaffDashboard.md),
-so a single browser tab can demo both sides of the working-hours handoff at once:
+The Customer View column has a `.working-hours-bar` above the chat panel: a "Working hours" checkbox
+(`getSettings` on mount, `updateSettings` on toggle — see
+[settings](../backend-services/settings.md); optimistically flips local state and rolls back if the
+request fails) plus a badge reading "In working hours" / "Out of working hours".
 
-- By default, `.staff-panel` renders [QueuePanel](QueuePanel.md), which now lists both support and
-  sales conversations (badged by `mode` - see [QueuePanel](QueuePanel.md)). Its `onJoined` callback
-  stores `{ id, mode, draftTicket, draftLead, messages }` in `liveConversation` state.
-- Once `liveConversation` is set, `.staff-panel` instead renders either
+## Staff View panel
+
+- While working hours are **off**, the Staff View panel just shows a static "Turn on working hours
+  to see the live handoff queue." message — the queue stays hidden rather than showing an empty list,
+  since nothing can be queued while the toggle is off.
+- While working hours are **on** and no conversation is joined, it renders [QueuePanel](QueuePanel.md),
+  which lists both support and sales conversations (badged by `mode` - see
+  [QueuePanel](QueuePanel.md)). Its `onJoined` callback stores
+  `{ id, mode, draftTicket, draftLead, messages }` in `liveConversation` state.
+- Once `liveConversation` is set, the panel instead renders either
   [StaffLeadChatWindow](StaffLeadChatWindow.md) (`liveConversation.mode === "sales"`) or
   [StaffChatWindow](StaffChatWindow.md) (otherwise) for that conversation - the two components are
   otherwise unrelated, so `App` picks between them entirely on `mode` rather than either component
@@ -91,6 +101,6 @@ so a single browser tab can demo both sides of the working-hours handoff at once
 
 ## Related
 
-- [docs/components/ModeSelectCard.md](ModeSelectCard.md), [docs/components/TicketCard.md](TicketCard.md), [docs/components/LeadCard.md](LeadCard.md), [docs/components/ContactConfirmCard.md](ContactConfirmCard.md), [docs/components/ContactForm.md](ContactForm.md), [docs/components/QueuePanel.md](QueuePanel.md), [docs/components/StaffChatWindow.md](StaffChatWindow.md), [docs/components/StaffLeadChatWindow.md](StaffLeadChatWindow.md), [docs/components/StaffDashboard.md](StaffDashboard.md)
+- [docs/components/ModeSelectCard.md](ModeSelectCard.md), [docs/components/TicketCard.md](TicketCard.md), [docs/components/LeadCard.md](LeadCard.md), [docs/components/ContactConfirmCard.md](ContactConfirmCard.md), [docs/components/ContactForm.md](ContactForm.md), [docs/components/QueuePanel.md](QueuePanel.md), [docs/components/StaffChatWindow.md](StaffChatWindow.md), [docs/components/StaffLeadChatWindow.md](StaffLeadChatWindow.md), [docs/components/StaffDashboard.md](StaffDashboard.md), [docs/components/LeadsDashboard.md](LeadsDashboard.md), [docs/components/HelpModal.md](HelpModal.md), [docs/components/LogoutButton.md](LogoutButton.md)
 - [docs/frontend-utils/README.md](../frontend-utils/README.md)
 - [docs/api-routes/post-api-conversations.md](../api-routes/post-api-conversations.md), [docs/api-routes/post-api-chat.md](../api-routes/post-api-chat.md), [docs/api-routes/post-confirm-contact.md](../api-routes/post-confirm-contact.md), [docs/api-routes/patch-conversation-contact.md](../api-routes/patch-conversation-contact.md), [docs/api-routes/get-conversation-messages.md](../api-routes/get-conversation-messages.md), [docs/api-routes/README.md](../api-routes/README.md) (settings/queue/staff-\* routes)
